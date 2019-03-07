@@ -13,14 +13,25 @@ add_definitions ( -DEXEC_NAME="${EXECUTABLE_NAME}" )
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)
 
 
-file(GLOB_RECURSE HEADERS "src/*.h")
-file(GLOB_RECURSE HEADERS "include/*.h")
-file(GLOB_RECURSE SOURCES_CPP "src/*.cpp")
-file(GLOB_RECURSE SOURCES_C "src/*.c")
+# file(GLOB_RECURSE HEADERS "src/*.h")
+# file(GLOB_RECURSE HEADERS "include/*.h")
+# file(GLOB_RECURSE SOURCES_CPP "src/*.cpp")
+# file(GLOB_RECURSE SOURCES_C "src/*.c")
 # file(GLOB_RECURSE RESOURCES "resources/")
 
-set( SOURCES ${SOURCES_CPP} ${SOURCES_C} )
-add_executable(${EXECUTABLE_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
+set(SOURCES 
+    src/RayTracer.cpp
+    src/RayGenerator.h
+    src/Ray.h
+    src/Camera.h
+    src/libs/Buffer.h
+    src/libs/GenVector.h
+    src/libs/obj_parser.h
+    src/libs/objLoader.h
+    src/libs/simplePNG.h)
+
+# set( SOURCES ${SOURCES_CPP} ${SOURCES_C} )
+add_executable(${EXECUTABLE_NAME} ${SOURCES})
 
 add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
