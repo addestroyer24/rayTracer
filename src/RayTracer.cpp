@@ -13,15 +13,15 @@
 #include "Ray.h"
 #include "Camera.h"
 #include "libs/objLoader.h"
-#include "libs/GenVector.h"
+#include "libs/Matrix.h"
 #include "libs/Buffer.h"
 #include "libs/simplePNG.h"
 
 
 //This might be helpful to convert from obj vectors to GenVectors
-Vector3 objToGenVec(obj_vector const * objVec)
+Vec3 objToGenVec(obj_vector const * objVec)
 {
-	Vector3 v;
+	Vec3 v;
 	v[0] = objVec->e[0];
 	v[1] = objVec->e[1];
 	v[2] = objVec->e[2];
@@ -43,7 +43,11 @@ int main(int argc, char ** argv)
 
 	//TODO: load obj from file argv1
     objLoader objData = objLoader();
-	objData.load(argv[1]);
+	if (!objData.load(argv[1]))
+    {
+        printf("Could not load object file %s\n", argv[1]);
+        exit(0);
+    }
 
 	//TODO: create a camera object
     if (!objData.camera)
@@ -52,9 +56,9 @@ int main(int argc, char ** argv)
         exit(0);
     }
 
-    Vector3 position = objToGenVec(objData.vertexList[objData.camera->camera_pos_index]);
-    Vector3 focus = objToGenVec(objData.vertexList[objData.camera->camera_look_point_index]);
-    Vector3 up = objToGenVec(objData.normalList[objData.camera->camera_up_norm_index]);
+    Vec3 position = objToGenVec(objData.vertexList[objData.camera->camera_pos_index]);
+    Vec3 focus = objToGenVec(objData.vertexList[objData.camera->camera_look_point_index]);
+    Vec3 up = objToGenVec(objData.normalList[objData.camera->camera_up_norm_index]);
 
     Camera camera = Camera::lookAt(position, focus, up);
 
@@ -66,8 +70,8 @@ int main(int argc, char ** argv)
 		for(int x=0; x<RES; x++)
 		{
 			Ray r = generator.getRay(x, y);
-			Vector3 d = r.getDirection()*255.0f;
-			Color c = Color( fabs(d[0]), fabs(d[1]), fabs(d[2]) );
+			Vec3 d = r.getDirection()*255.0f;
+			Color c = Color{ fabsf(d[0]), fabsf(d[1]), fabsf(d[2]) };
             //TODO ask Micah
 			buffer.at(x,RES - 1 - y) = c;
 		}

@@ -1,26 +1,26 @@
 #ifndef _RAY_H
 #define _RAY_H
 
-#include "libs/GenVector.h"
+#include "libs/Matrix.h"
 
 class Ray
 {
 private:
-    Vector3 origin;
-    Vector3 direction;
+    Vec3 origin;
+    Vec3 direction;
 
 public:
-    Ray(Vector3 origin, Vector3 direction);
+    Ray(Vec3 origin, Vec3 direction);
 
-    Vector3 getDirection();
+    Vec3 getDirection();
 };
 
-Ray::Ray(Vector3 origin, Vector3 direction)
+Ray::Ray(Vec3 origin, Vec3 direction)
     : origin(origin), direction(direction)
 {
 }
 
-Vector3 Ray::getDirection()
+Vec3 Ray::getDirection()
 {
     return this->direction;
 }

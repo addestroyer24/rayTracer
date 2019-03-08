@@ -1,10 +1,12 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.1)
 
 # Enable debug symbols by default, must be done before project() statement
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build (Debug or Release)" FORCE)
 endif()
 # (you can also set it on the command line: -D CMAKE_BUILD_TYPE=Release)
+
+set (CMAKE_CXX_STANDARD 11)
 
 set(EXECUTABLE_NAME "tracer")
 project(${EXECUTABLE_NAME})
@@ -25,7 +27,7 @@ set(SOURCES
     src/Ray.h
     src/Camera.h
     src/libs/Buffer.h
-    src/libs/GenVector.h
+    src/libs/Matrix.h
     src/libs/obj_parser.h
     src/libs/objLoader.h
     src/libs/simplePNG.h)

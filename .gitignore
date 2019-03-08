@@ -156,3 +156,5 @@ build/
 #
 # NB: this is exclusive with OPTION 2 below
 xcuserdata/
+
+.vscode/

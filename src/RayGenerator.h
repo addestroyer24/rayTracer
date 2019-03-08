@@ -39,12 +39,12 @@ Ray RayGenerator::getRay(int x, int y)
     float v = this->fromCameraToBottom + (this->fromCameraToTop - this->fromCameraToBottom) * (y + 0.5f) / this->imageHeight;
     float d = this->imageWidth / 2.0f / tanf(M_PI_4);
 
-    Vector3 direction = u * this->camera.getu() + v * this->camera.getv() - d * this->camera.getw();
+    Vec3 direction = u * this->camera.getu() + v * this->camera.getv() - d * this->camera.getw();
 
     // s = direction + e
     // direction = s - e
 
-    return Ray(this->camera.getPosition(), direction.normalize());
+    return Ray(this->camera.getPosition(), Mat::normalize(direction));
 }
 
 #endif
