@@ -4,18 +4,20 @@
 //Hard code resolution for now
 #define RES 100
 
+#include "Camera.h"
+#include "Ray.h"
+#include "RayGenerator.h"
+#include "Sphere.h"
+#include "Surface.h"
+
+#include "libs/Buffer.h"
+#include "libs/Matrix.h"
+#include "libs/objLoader.h"
+#include "libs/simplePNG.h"
 
 #define _USE_MATH_DEFINES //This enables math constants in Windows
 #include <math.h> //Math functions and some constants
-
-//TODO: add any other includes you need; possibilities:
-#include "RayGenerator.h"
-#include "Ray.h"
-#include "Camera.h"
-#include "libs/objLoader.h"
-#include "libs/Matrix.h"
-#include "libs/Buffer.h"
-#include "libs/simplePNG.h"
+#include <vector>
 
 
 //This might be helpful to convert from obj vectors to GenVectors
@@ -64,18 +66,49 @@ int main(int argc, char ** argv)
 
 	RayGenerator generator = RayGenerator(camera, RES, RES);
 
+	std::vector<Surface*> surfaces;
+
+    for (int i = 0; i < objData.sphereCount; i++)
+	{
+		Vec3 center = objToGenVec(objData.vertexList[objData.sphereList[i]->pos_index]);
+		float radius = objData.normalList[objData.sphereList[i]->equator_normal_index]->e[0];
+		surfaces.push_back(new Sphere(center, radius));
+	}
+
 	//Convert vectors to RGB colors for testing results
 	for(int y=0; y<RES; y++)
 	{
 		for(int x=0; x<RES; x++)
 		{
+			bool hitSurface = false;
 			Ray r = generator.getRay(x, y);
-			Vec3 d = r.getDirection()*255.0f;
-			Color c = Color{ fabsf(d[0]), fabsf(d[1]), fabsf(d[2]) };
-            //TODO ask Micah
+			Color c;
+
+			for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
+			{
+				if ((*iter)->hit(r, 0, 1000))
+				{
+					hitSurface = true;
+					c = Color{255, 255, 255};
+					break;
+				}
+			}
+			
+			if (!hitSurface)
+			{
+				Vec3 d = r.getDirection()*255.0f;
+				c = Color{ (unsigned char)fabsf(d[0]), (unsigned char)fabsf(d[1]), (unsigned char)fabsf(d[2]) };
+			}
+
 			buffer.at(x,RES - 1 - y) = c;
 		}
 	}
+
+	for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
+	{
+		delete *iter;
+	}
+	surfaces.clear();
 
 	//Write output buffer to file argv2
 	simplePNG_write(argv[2], buffer.getWidth(), buffer.getHeight(), (unsigned char*)&buffer.at(0,0));

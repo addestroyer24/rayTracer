@@ -23,9 +23,11 @@ add_definitions ( -DEXEC_NAME="${EXECUTABLE_NAME}" )
 
 set(SOURCES 
     src/RayTracer.cpp
-    src/RayGenerator.h
-    src/Ray.h
     src/Camera.h
+    src/Ray.h
+    src/RayGenerator.h
+    src/Sphere.h
+    src/Surface.h
     src/libs/Buffer.h
     src/libs/Matrix.h
     src/libs/obj_parser.h

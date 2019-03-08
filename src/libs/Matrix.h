@@ -392,13 +392,13 @@ namespace Mat
 	}
 
 	template<unsigned int length>
-	Vector<length> dot(const Vector<length> &left, const Vector<length> &right) 
+	float dot(const Vector<length> &left, const Vector<length> &right) 
 	{
-		Vector<length> ret;
+		float ret = 0;
 		
 		for (int i = 0; i < length; i++)
 		{
-			ret[i] = left[i] * right[i];
+			ret += left[i] * right[i];
 		}
 
 		return ret;

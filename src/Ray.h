@@ -13,6 +13,7 @@ public:
     Ray(Vec3 origin, Vec3 direction);
 
     Vec3 getDirection();
+    Vec3 getOrigin();
 };
 
 Ray::Ray(Vec3 origin, Vec3 direction)
@@ -23,6 +24,11 @@ Ray::Ray(Vec3 origin, Vec3 direction)
 Vec3 Ray::getDirection()
 {
     return this->direction;
+}
+
+Vec3 Ray::getOrigin()
+{
+    return this->origin;
 }
 
 #endif
