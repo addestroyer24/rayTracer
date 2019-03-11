@@ -22,17 +22,7 @@ add_definitions ( -DEXEC_NAME="${EXECUTABLE_NAME}" )
 # file(GLOB_RECURSE RESOURCES "resources/")
 
 set(SOURCES 
-    src/RayTracer.cpp
-    src/Camera.h
-    src/Ray.h
-    src/RayGenerator.h
-    src/Sphere.h
-    src/Surface.h
-    src/libs/Buffer.h
-    src/libs/Matrix.h
-    src/libs/obj_parser.h
-    src/libs/objLoader.h
-    src/libs/simplePNG.h)
+    src/RayTracer.cpp)
 
 # set( SOURCES ${SOURCES_CPP} ${SOURCES_C} )
 add_executable(${EXECUTABLE_NAME} ${SOURCES})

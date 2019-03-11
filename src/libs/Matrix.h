@@ -1,7 +1,7 @@
 #ifndef _MATRIX_H
 #define _MATRIX_H
 
-#include <cmath>
+#include <math.h>
 #include <initializer_list>
 #include <string>
 #include <sstream>
@@ -366,7 +366,7 @@ namespace Mat
 			mag += vec[i] * vec[i];
 		}
 
-		return std::sqrt(mag);
+		return sqrtf(mag);
 	}
 
 	template<unsigned int length>
@@ -391,10 +391,10 @@ namespace Mat
 		return Vector<3>(vals);
 	}
 
-	template<unsigned int length>
-	float dot(const Vector<length> &left, const Vector<length> &right) 
+	template<unsigned int length, typename T>
+	T dot(const Vector<length, T> &left, const Vector<length, T> &right) 
 	{
-		float ret = 0;
+		T ret = 0;
 		
 		for (int i = 0; i < length; i++)
 		{
@@ -402,6 +402,11 @@ namespace Mat
 		}
 
 		return ret;
+	}
+
+	float toRads(float in)
+	{
+		return in * 3.14159265f / 180;
 	}
 }
 

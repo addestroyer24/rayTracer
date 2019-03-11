@@ -14,30 +14,33 @@ private:
     Vec3 v;
     Vec3 w;
 
+    float fov;
 
-    Camera(Vec3 position, Vec3 direction, Vec3 up);
+
+    Camera(Vec3 position, Vec3 direction, Vec3 up, float fov);
 
 public:
-    static Camera lookAt(Vec3 position, Vec3 focus, Vec3 up);
+    static Camera lookAt(Vec3 position, Vec3 focus, Vec3 up, float fov);
 
     Vec3 getu();
     Vec3 getv();
     Vec3 getw();
     Vec3 getPosition();
+    float getFOV();
 
 };
 
-Camera::Camera(Vec3 position, Vec3 direction, Vec3 up)
-    : position(position)//, lookDir(direction), upDir(up)
+Camera::Camera(Vec3 position, Vec3 direction, Vec3 up, float fov)
+    : position(position), fov(fov)//, lookDir(direction), upDir(up)
 {
     this->w = normalize(-direction);
     this->u = normalize(Mat::cross(up, this->w));
     this->v = normalize(Mat::cross(this->w, this->u));
 }
 
-Camera Camera::lookAt(Vec3 position, Vec3 focus, Vec3 up)
+Camera Camera::lookAt(Vec3 position, Vec3 focus, Vec3 up, float fov)
 {
-    return Camera(position, focus - position, up);
+    return Camera(position, focus - position, up, fov);
 }
 
 Vec3 Camera::getu()
@@ -58,6 +61,11 @@ Vec3 Camera::getw()
 Vec3 Camera::getPosition()
 {
     return this->position;
+}
+
+float Camera::getFOV()
+{
+    return this->fov;
 }
 
 #endif

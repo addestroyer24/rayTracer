@@ -17,8 +17,9 @@ public:
 };
 
 Ray::Ray(Vec3 origin, Vec3 direction)
-    : origin(origin), direction(direction)
+    : origin(origin)
 {
+    this->direction = Mat::normalize(direction);
 }
 
 Vec3 Ray::getDirection()

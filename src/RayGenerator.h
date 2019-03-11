@@ -37,14 +37,14 @@ Ray RayGenerator::getRay(int x, int y)
 {
     float u = this->fromCameraToLeft + (this->fromCameraToRight - this->fromCameraToLeft) * (x + 0.5f) / this->imageWidth;
     float v = this->fromCameraToBottom + (this->fromCameraToTop - this->fromCameraToBottom) * (y + 0.5f) / this->imageHeight;
-    float d = this->imageWidth / 2.0f / tanf(M_PI_4);
+    float d = this->imageWidth / 2.0f / tanf(this->camera.getFOV()/2);
 
     Vec3 direction = u * this->camera.getu() + v * this->camera.getv() - d * this->camera.getw();
 
     // s = direction + e
     // direction = s - e
 
-    return Ray(this->camera.getPosition(), Mat::normalize(direction));
+    return Ray(this->camera.getPosition(), direction);
 }
 
 #endif

@@ -9,6 +9,7 @@
 #include "RayGenerator.h"
 #include "Sphere.h"
 #include "Surface.h"
+#include "Triangle.h"
 
 #include "libs/Buffer.h"
 #include "libs/Matrix.h"
@@ -62,7 +63,7 @@ int main(int argc, char ** argv)
     Vec3 focus = objToGenVec(objData.vertexList[objData.camera->camera_look_point_index]);
     Vec3 up = objToGenVec(objData.normalList[objData.camera->camera_up_norm_index]);
 
-    Camera camera = Camera::lookAt(position, focus, up);
+    Camera camera = Camera::lookAt(position, focus, up, Mat::toRads(90));
 
 	RayGenerator generator = RayGenerator(camera, RES, RES);
 
@@ -71,8 +72,23 @@ int main(int argc, char ** argv)
     for (int i = 0; i < objData.sphereCount; i++)
 	{
 		Vec3 center = objToGenVec(objData.vertexList[objData.sphereList[i]->pos_index]);
+		Vec3 equator = objToGenVec(objData.normalList[objData.sphereList[i]->equator_normal_index]);
+		Vec3 up = objToGenVec(objData.normalList[objData.sphereList[i]->up_normal_index]);
 		float radius = objData.normalList[objData.sphereList[i]->equator_normal_index]->e[0];
-		surfaces.push_back(new Sphere(center, radius));
+		surfaces.push_back(new Sphere(center, equator, up, radius));
+	}
+
+	for (int i = 0; i < objData.faceCount; i++)
+	{
+		Vec3 a = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[0]]);
+
+		for (int j = 2; j < objData.faceList[i]->vertex_count; j++)
+		{
+			Vec3 b = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[j - 1]]);
+			Vec3 c = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[j]]);
+
+			surfaces.push_back(new Triangle(a, b, c));
+		}
 	}
 
 	//Convert vectors to RGB colors for testing results
@@ -81,12 +97,13 @@ int main(int argc, char ** argv)
 		for(int x=0; x<RES; x++)
 		{
 			bool hitSurface = false;
+			rayIntersectionInfo info;
 			Ray r = generator.getRay(x, y);
 			Color c;
 
 			for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
 			{
-				if ((*iter)->hit(r, 0, 1000))
+				if ((*iter)->hit(r, 0, 1000, info))
 				{
 					hitSurface = true;
 					c = Color{255, 255, 255};
