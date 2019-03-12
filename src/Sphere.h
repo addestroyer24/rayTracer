@@ -43,7 +43,7 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
 
     discriminant = sqrtf(discriminant);
 
-    if (-dDotemc - discriminant < 0)
+    if ((-dDotemc - discriminant) > 0)
     {
         record.intersectionTime = (-dDotemc - discriminant) / dDotd;
         //Hit the far side of the sphere
@@ -53,6 +53,9 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
         record.intersectionTime = (-dDotemc + discriminant) / dDotd;
         //Hit the near side of the sphere
     }
+
+    record.intersectionPoint = ray.getOrigin() + ray.getDirection() * record.intersectionTime;
+    record.surfaceNormal = Mat::normalize(record.intersectionPoint - this->center);
     
     return true;
 }

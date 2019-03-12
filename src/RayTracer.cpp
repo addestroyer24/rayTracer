@@ -17,6 +17,7 @@
 #include "libs/simplePNG.h"
 
 #define _USE_MATH_DEFINES //This enables math constants in Windows
+#include <limits>
 #include <math.h> //Math functions and some constants
 #include <vector>
 
@@ -97,24 +98,29 @@ int main(int argc, char ** argv)
 		for(int x=0; x<RES; x++)
 		{
 			bool hitSurface = false;
-			rayIntersectionInfo info;
-			Ray r = generator.getRay(x, y);
+			rayIntersectionInfo info, newInfo;
 			Color c;
+
+			Ray r = generator.getRay(x, y);
+			info.intersectionTime = std::numeric_limits<int>::max();
 
 			for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
 			{
-				if ((*iter)->hit(r, 0, 1000, info))
+				if ((*iter)->hit(r, 0, 1000, newInfo) && newInfo.intersectionTime < info.intersectionTime)
 				{
+					info = newInfo;
 					hitSurface = true;
-					c = Color{255, 255, 255};
-					break;
+					c = Color{(unsigned char)(info.surfaceNormal[0] * 255), 
+							  (unsigned char)(info.surfaceNormal[1] * 255), 
+							  (unsigned char)(info.surfaceNormal[2] * 255)};
+					//break;
 				}
 			}
 			
 			if (!hitSurface)
 			{
-				Vec3 d = r.getDirection()*255.0f;
-				c = Color{ (unsigned char)fabsf(d[0]), (unsigned char)fabsf(d[1]), (unsigned char)fabsf(d[2]) };
+				//Vec3 d = r.getDirection()*255.0f;
+				c = Color{0,0,0};//Color{ (unsigned char)fabsf(d[0]), (unsigned char)fabsf(d[1]), (unsigned char)fabsf(d[2]) };
 			}
 
 			buffer.at(x,RES - 1 - y) = c;

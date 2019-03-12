@@ -26,6 +26,10 @@ Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c)
 
 bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
 {
+    //check the denominator first to avoid division by 0
+    if (Mat::dot(ray.getDirection(), this->normal) == 0)
+        return false;
+
     float t = Mat::dot(this->a - ray.getOrigin(), this->normal) / Mat::dot(ray.getDirection(), this->normal);
 
     if (t < 0)
@@ -43,6 +47,8 @@ bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo 
         return false;
 
     record.intersectionTime = t;
+    record.intersectionPoint = ray.getOrigin() + ray.getDirection() * record.intersectionTime;
+    record.surfaceNormal = this->normal;
 
     return true;
 

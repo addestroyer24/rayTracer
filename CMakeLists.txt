@@ -36,6 +36,11 @@ add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
     #"${RUNTIME_OUTPUT_DIRECTORY}" )
     #"Debug" )
 
+add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/scenes"
+    "${CMAKE_CFG_INTDIR}/scenes/")
+
 if(UNIX AND NOT APPLE)
     set(LIBS ${LIBS} ${CMAKE_DL_LIBS})
 endif()
