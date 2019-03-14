@@ -8,6 +8,7 @@ struct rayIntersectionInfo
     float intersectionTime;
     Vec3 intersectionPoint;
     Vec3 surfaceNormal;
+    int materialID;
     //Material
 };
 

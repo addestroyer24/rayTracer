@@ -5,6 +5,7 @@
 #define RES 100
 
 #include "Camera.h"
+#include "CompositeSurface.h"
 #include "Ray.h"
 #include "RayGenerator.h"
 #include "Sphere.h"
@@ -17,6 +18,7 @@
 #include "libs/simplePNG.h"
 
 #define _USE_MATH_DEFINES //This enables math constants in Windows
+#include <iostream>
 #include <limits>
 #include <math.h> //Math functions and some constants
 #include <vector>
@@ -68,15 +70,18 @@ int main(int argc, char ** argv)
 
 	RayGenerator generator = RayGenerator(camera, RES, RES);
 
-	std::vector<Surface*> surfaces;
+	//std::vector<Surface*> surfaces;
+	CompositeSurface scene(-1);
 
     for (int i = 0; i < objData.sphereCount; i++)
 	{
 		Vec3 center = objToGenVec(objData.vertexList[objData.sphereList[i]->pos_index]);
 		Vec3 equator = objToGenVec(objData.normalList[objData.sphereList[i]->equator_normal_index]);
 		Vec3 up = objToGenVec(objData.normalList[objData.sphereList[i]->up_normal_index]);
-		float radius = objData.normalList[objData.sphereList[i]->equator_normal_index]->e[0];
-		surfaces.push_back(new Sphere(center, equator, up, radius));
+		float radius = Mat::magnitude(equator);
+
+		scene.addSurface(new Sphere(center, equator, up, radius, objData.sphereList[i]->material_index));
+		//surfaces.push_back(new Sphere(center, equator, up, radius, objData.sphereList[i]->material_index));
 	}
 
 	for (int i = 0; i < objData.faceCount; i++)
@@ -88,7 +93,8 @@ int main(int argc, char ** argv)
 			Vec3 b = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[j - 1]]);
 			Vec3 c = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[j]]);
 
-			surfaces.push_back(new Triangle(a, b, c));
+			scene.addSurface(new Triangle(a, b, c, objData.faceList[i]->material_index));
+			//surfaces.push_back(new Triangle(a, b, c, objData.faceList[i]->material_index));
 		}
 	}
 
@@ -102,22 +108,20 @@ int main(int argc, char ** argv)
 			Color c;
 
 			Ray r = generator.getRay(x, y);
-			info.intersectionTime = std::numeric_limits<int>::max();
 
-			for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
-			{
-				if ((*iter)->hit(r, 0, 1000, newInfo) && newInfo.intersectionTime < info.intersectionTime)
-				{
-					info = newInfo;
-					hitSurface = true;
-					c = Color{(unsigned char)(info.surfaceNormal[0] * 255), 
-							  (unsigned char)(info.surfaceNormal[1] * 255), 
-							  (unsigned char)(info.surfaceNormal[2] * 255)};
-					//break;
-				}
-			}
+			hitSurface = scene.hit(r, 0, 1000, info);
 			
-			if (!hitSurface)
+			if (hitSurface)
+			{
+				obj_material *mat = objData.materialList[info.materialID];
+				// c = Color{(unsigned char)(info.surfaceNormal[0] * 255), 
+				// 		  (unsigned char)(info.surfaceNormal[1] * 255), 
+				// 		  (unsigned char)(info.surfaceNormal[2] * 255)};
+				c = Color{(unsigned char)(mat->amb[0] * 255), 
+						  (unsigned char)(mat->amb[1] * 255), 
+						  (unsigned char)(mat->amb[2] * 255)};
+			}
+			else
 			{
 				//Vec3 d = r.getDirection()*255.0f;
 				c = Color{0,0,0};//Color{ (unsigned char)fabsf(d[0]), (unsigned char)fabsf(d[1]), (unsigned char)fabsf(d[2]) };
@@ -127,11 +131,11 @@ int main(int argc, char ** argv)
 		}
 	}
 
-	for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
-	{
-		delete *iter;
-	}
-	surfaces.clear();
+	// for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
+	// {
+	// 	delete *iter;
+	// }
+	// surfaces.clear();
 
 	//Write output buffer to file argv2
 	simplePNG_write(argv[2], buffer.getWidth(), buffer.getHeight(), (unsigned char*)&buffer.at(0,0));

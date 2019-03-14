@@ -1,8 +1,9 @@
 #ifndef _SPHERE_H
 #define _SPHERE_H
 
-#include "rayIntersectionInfo.h"
 #include "Surface.h"
+
+#include "rayIntersectionInfo.h"
 
 #include "libs/Matrix.h"
 
@@ -17,14 +18,14 @@ private:
     float radius;
 
 public:
-    Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius);
+    Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, int materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
     //virtual BoundingBox getBoundingBox() = 0;
 };
 
-Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius)
-    : center(center), radius(radius)
+Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, int materialID)
+    : Surface(materialID), center(center), radius(radius)
 {
     this->equatorNormal = Mat::normalize(equatorNormal);
     this-> upNormal = Mat::normalize(upNormal);
@@ -56,6 +57,7 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
 
     record.intersectionPoint = ray.getOrigin() + ray.getDirection() * record.intersectionTime;
     record.surfaceNormal = Mat::normalize(record.intersectionPoint - this->center);
+    record.materialID = this->materialID;
     
     return true;
 }

@@ -2,6 +2,7 @@
 #define _TRIANGLE_H
 
 #include "Surface.h"
+
 #include "libs/Matrix.h"
 
 class Triangle : public Surface
@@ -13,13 +14,13 @@ private:
     Vec3 normal;
 
 public:
-    Triangle(Vec3 a, Vec3 b, Vec3 c);
+    Triangle(Vec3 a, Vec3 b, Vec3 c, int materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
 };
 
-Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c)
-    : a(a), b(b), c(c)
+Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, int materialID)
+    : Surface(materialID), a(a), b(b), c(c)
 {
     this->normal = Mat::normalize(Mat::cross(b - a, c - b));
 }
@@ -49,6 +50,7 @@ bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo 
     record.intersectionTime = t;
     record.intersectionPoint = ray.getOrigin() + ray.getDirection() * record.intersectionTime;
     record.surfaceNormal = this->normal;
+    record.materialID = this->materialID;
 
     return true;
 
