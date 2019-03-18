@@ -32,13 +32,14 @@ bool CompositeSurface::hit(Ray ray, float startTime, float endTime, rayIntersect
     bool hitSurface = false;
     rayIntersectionInfo newInfo;
 
-    record.intersectionTime = std::numeric_limits<int>::max();
+    record.intersectionTime = endTime;
 
     for (auto iter = this->surfaces.begin(); iter != this->surfaces.end(); iter++)
     {
-        if ((*iter)->hit(ray, 0, 1000, newInfo) && newInfo.intersectionTime < record.intersectionTime)
+        if ((*iter)->hit(ray, startTime, endTime, newInfo))
         {
             record = newInfo;
+            endTime = record.intersectionTime;
             hitSurface = true;
         }
     }

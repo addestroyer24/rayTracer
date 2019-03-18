@@ -6,6 +6,7 @@
 
 #include "Camera.h"
 #include "CompositeSurface.h"
+#include "Light.h"
 #include "Ray.h"
 #include "RayGenerator.h"
 #include "Sphere.h"
@@ -36,10 +37,6 @@ Vec3 objToGenVec(obj_vector const * objVec)
 
 int main(int argc, char ** argv)
 {
-
-	//TODO: create a frame buffer for RESxRES
-    Buffer<Color> buffer = Buffer<Color>(RES, RES);
-
 	//Need at least two arguments (obj input and png output)
 	if(argc < 3)
 	{
@@ -47,7 +44,9 @@ int main(int argc, char ** argv)
 		exit(0);
 	}
 
-	//TODO: load obj from file argv1
+	Buffer<Vec3> colorBuffer(RES, RES);
+
+	//load obj from file argv1
     objLoader objData = objLoader();
 	if (!objData.load(argv[1]))
     {
@@ -55,7 +54,7 @@ int main(int argc, char ** argv)
         exit(0);
     }
 
-	//TODO: create a camera object
+	//create a camera object
     if (!objData.camera)
     {
         printf("No camera loaded!\n");
@@ -72,6 +71,7 @@ int main(int argc, char ** argv)
 
 	//std::vector<Surface*> surfaces;
 	CompositeSurface scene(-1);
+	std::vector<Light> lights;
 
     for (int i = 0; i < objData.sphereCount; i++)
 	{
@@ -98,14 +98,23 @@ int main(int argc, char ** argv)
 		}
 	}
 
-	//Convert vectors to RGB colors for testing results
+	for (int i = 0; i < objData.lightPointCount; i++)
+	{
+		Vec3 position = objToGenVec(objData.vertexList[objData.lightPointList[i]->pos_index]);
+		lights.emplace_back(position, objData.lightPointList[i]->material_index);
+
+		//scene.addSurface(new Sphere(position, Vec3(), Vec3(), 1, objData.lightPointList[i]->material_index));
+	}
+
+	float maxComponent = 1;
+
 	for(int y=0; y<RES; y++)
 	{
 		for(int x=0; x<RES; x++)
 		{
 			bool hitSurface = false;
-			rayIntersectionInfo info, newInfo;
-			Color c;
+			rayIntersectionInfo info;
+			Vec3 c{0,0,0};
 
 			Ray r = generator.getRay(x, y);
 
@@ -113,21 +122,69 @@ int main(int argc, char ** argv)
 			
 			if (hitSurface)
 			{
-				obj_material *mat = objData.materialList[info.materialID];
-				// c = Color{(unsigned char)(info.surfaceNormal[0] * 255), 
-				// 		  (unsigned char)(info.surfaceNormal[1] * 255), 
-				// 		  (unsigned char)(info.surfaceNormal[2] * 255)};
-				c = Color{(unsigned char)(mat->amb[0] * 255), 
-						  (unsigned char)(mat->amb[1] * 255), 
-						  (unsigned char)(mat->amb[2] * 255)};
-			}
-			else
-			{
-				//Vec3 d = r.getDirection()*255.0f;
-				c = Color{0,0,0};//Color{ (unsigned char)fabsf(d[0]), (unsigned char)fabsf(d[1]), (unsigned char)fabsf(d[2]) };
+				obj_material *surfaceMat = objData.materialList[info.materialID];
+
+				for (auto light = lights.begin(); light < lights.end(); light++)
+				{
+					obj_material *lightMat = objData.materialList[(*light).getMaterial()];
+
+					Vec3 lightDir = (*light).getPosition() - info.intersectionPoint;
+					float lightDistance = Mat::magnitude(lightDir);
+					lightDir = Mat::normalize(lightDir);
+
+					//std::cout << (*light).getPosition().toString() << std::endl; 
+
+					// diffuse lighting
+					float lDotn = Mat::dot(lightDir, info.surfaceNormal);
+
+					// specular lighting
+					float spec = 0;
+
+					if (lDotn > 0)
+					{
+						Vec3 reflectedLight = Mat::normalize(Mat::reflect(lightDir, info.surfaceNormal));
+						Vec3 view = Mat::normalize(camera.getPosition() - info.intersectionPoint);
+
+						if (Mat::dot(reflectedLight, view) > 0 && surfaceMat->shiny != 0)
+							spec = pow(Mat::dot(reflectedLight, view), surfaceMat->shiny);
+					}
+					else
+					{
+						lDotn = 0;
+					}
+
+					Ray shadowRay(info.intersectionPoint, lightDir);
+					rayIntersectionInfo unneeded;
+
+					if (scene.hit(shadowRay, 1 - Mat::dot(lightDir, info.surfaceNormal), lightDistance, unneeded))
+					{
+						lDotn = 0;
+						spec = 0;
+					}
+
+					for (int i = 0; i < 3; i++)
+					{
+						// ambient lighting
+						c[i] += surfaceMat->amb[i] * lightMat->amb[i];
+
+						// diffuse lighting
+						c[i] += surfaceMat->diff[i] * lightMat->diff[i] * lDotn;
+
+						// specular lighting
+						c[i] += surfaceMat->spec[i] * lightMat->spec[i] * spec;
+					}
+
+					//c = info.surfaceNormal;
+				}
 			}
 
-			buffer.at(x,RES - 1 - y) = c;
+			for (int i = 0; i < 3; i++)
+			{
+				if (c[i] > maxComponent)
+					maxComponent = c[i];
+			}
+
+			colorBuffer.at(x,RES - 1 - y) = c;
 		}
 	}
 
@@ -137,8 +194,24 @@ int main(int argc, char ** argv)
 	// }
 	// surfaces.clear();
 
+	//create a frame buffer for RESxRES
+    Buffer<Color> outputBuffer(RES, RES);
+
+	for(int y=0; y<RES; y++)
+	{
+		for(int x=0; x<RES; x++)
+		{
+			Vec3& floatColor = colorBuffer.at(x, y);
+			Color& charColor = outputBuffer.at(x, y);
+			charColor = (Color)(floatColor * 255 / maxComponent);
+			// charColor[0] = (unsigned char)(floatColor[0] * 255 / maxComponent);
+			// charColor[1] = (unsigned char)(floatColor[1] * 255 / maxComponent);
+			// charColor[2] = (unsigned char)(floatColor[2] * 255 / maxComponent);
+		}
+	}
+
 	//Write output buffer to file argv2
-	simplePNG_write(argv[2], buffer.getWidth(), buffer.getHeight(), (unsigned char*)&buffer.at(0,0));
+	simplePNG_write(argv[2], outputBuffer.getWidth(), outputBuffer.getHeight(), (unsigned char*)&outputBuffer.at(0,0));
 
 	return 0;
 }

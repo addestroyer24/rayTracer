@@ -31,6 +31,9 @@ namespace Mat
 		T* operator[](int row);
 		T const* operator[](int row) const;
 
+		template<typename T2>
+		explicit operator Matrix<height, width, T2>();
+
 		std::string toString() const;
 
 		//Returns a T[] representing the matrix, in row-major order
@@ -60,6 +63,9 @@ namespace Mat
 		{
 			return this->vals[index];
 		}
+
+		template<typename T2>
+		explicit operator Vector<length, T2>();
 	};
 
 
@@ -256,8 +262,8 @@ namespace Mat
 		return ret;
 	}
 
-	template<unsigned int height, unsigned int width, typename T>
-	Matrix<height, width, T> operator*(T num, const Matrix<height, width, T> &mat)
+	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
+	Matrix<height, width, TMat> operator*(TNum num, const Matrix<height, width, TMat> &mat)
 	{
 		return mat * num;
 	}
@@ -268,10 +274,10 @@ namespace Mat
 		return vec * num;
 	}
 
-	template<unsigned int height, unsigned int width, typename T>
-	Matrix<height, width, T> operator*(const Matrix<height, width, T> &left, T num)
+	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
+	Matrix<height, width, TMat> operator*(const Matrix<height, width, TMat> &left, TNum num)
 	{
-		Matrix<height, width, T> ret;
+		Matrix<height, width, TMat> ret;
 		for (unsigned int i = 0; i < height; i++)
 		{
 			for (unsigned int j = 0; j < width; j++)
@@ -282,10 +288,10 @@ namespace Mat
 		return ret;
 	}
 
-	template<unsigned int height, typename T>
-	Vector<height, T> operator*(const Vector<height, T> &left, T num)
+	template<unsigned int height, typename TMat, typename TNum>
+	Vector<height, TMat> operator*(const Vector<height, TMat> &left, TNum num)
 	{
-		Vector<height, T> ret;
+		Vector<height, TMat> ret;
 		for (unsigned int i = 0; i < height; i++)
 		{
 			ret[i] = left[i] * num;
@@ -295,10 +301,10 @@ namespace Mat
 
 
 
-	template<unsigned int height, unsigned int width, typename T>
-	Matrix<height, width, T> operator/(const Matrix<height, width, T> &left, T num)
+	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
+	Matrix<height, width, TMat> operator/(const Matrix<height, width, TMat> &left, TNum num)
 	{
-		Matrix<height, width, T> ret;
+		Matrix<height, width, TMat> ret;
 		for (unsigned int i = 0; i < height; i++)
 		{
 			for (unsigned int j = 0; j < width; j++)
@@ -309,10 +315,10 @@ namespace Mat
 		return ret;
 	}
 
-	template<unsigned int height, typename T>
-	Vector<height, T> operator/(const Vector<height, T> &left, T num)
+	template<unsigned int height, typename TMat, typename TNum>
+	Vector<height, TMat> operator/(const Vector<height, TMat> &left, TNum num)
 	{
-		Vector<height, T> ret;
+		Vector<height, TMat> ret;
 		for (unsigned int i = 0; i < height; i++)
 		{
 			ret[i] = left[i] / num;
@@ -332,6 +338,35 @@ namespace Mat
 	T const* Matrix<height, width, T>::operator[](int row) const
 	{
 		return this->vals + row * width;
+	}
+
+
+
+	template<unsigned int height, unsigned int width, typename T1>
+	template<typename T2>
+	Matrix<height, width, T1>::operator Matrix<height, width, T2>()
+	{
+		Matrix<height, width, T2> ret;
+		for (unsigned int i = 0; i < height; i++)
+		{
+			for (unsigned int j = 0; j < width; j++)
+			{
+				ret[i][j] = static_cast<T2>(this->operator[](i)[j]);
+			}
+		}
+		return ret;
+	}
+
+	template<unsigned int height, typename T1>
+	template<typename T2>
+	Vector<height, T1>::operator Vector<height, T2>()
+	{
+		Vector<height, T2> ret;
+		for (unsigned int i = 0; i < height; i++)
+		{
+			ret[i] = static_cast<T2>(this->vals[i]);
+		}
+		return ret;
 	}
 
 
@@ -380,15 +415,16 @@ namespace Mat
 			return vec;
 	}
 
-	Vector<3> cross(Vector<3> left, Vector<3> right)
+	template<typename T>
+	Vector<3, T> cross(const Vector<3, T> left, const Vector<3, T> right)
 	{
-		float vals[3];
+		T vals[3];
 
 		vals[0] = left[1] * right[2] - left[2] * right[1];
 		vals[1] = left[2] * right[0] - left[0] * right[2];
 		vals[2] = left[0] * right[1] - left[1] * right[0];
 
-		return Vector<3>(vals);
+		return Vector<3, T>(vals);
 	}
 
 	template<unsigned int length, typename T>
@@ -402,6 +438,12 @@ namespace Mat
 		}
 
 		return ret;
+	}
+
+	template<typename T>
+	Vector<3, T> reflect(const Vector<3, T> outgoing, const Vector<3, T> axis)
+	{
+		return normalize(2 * dot(outgoing, axis) * axis - outgoing);
 	}
 
 	float toRads(float in)
