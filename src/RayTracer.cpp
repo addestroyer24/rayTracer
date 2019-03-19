@@ -5,10 +5,12 @@
 #define RES 100
 
 #include "Camera.h"
-#include "CompositeSurface.h"
+//#include "CompositeSurface.h"
 #include "Light.h"
+#include "Material.h"
 #include "Ray.h"
 #include "RayGenerator.h"
+#include "Scene.h"
 #include "Sphere.h"
 #include "Surface.h"
 #include "Triangle.h"
@@ -25,15 +27,25 @@
 #include <vector>
 
 
-//This might be helpful to convert from obj vectors to GenVectors
-Vec3 objToGenVec(obj_vector const * objVec)
+Material* objMaterialtoMaterial(obj_material* mat)
 {
-	Vec3 v;
-	v[0] = objVec->e[0];
-	v[1] = objVec->e[1];
-	v[2] = objVec->e[2];
-	return v;
+	return new Material(
+		mat->name,
+		mat->texture_filename,
+		Vec3(mat->amb),
+		Vec3(mat->diff),
+		Vec3(mat->spec),
+		mat->reflect,
+		mat->refract,
+		mat->trans,
+		mat->shiny,
+		mat->glossy,
+		mat->refract_index
+	);
 }
+
+
+Vec3 traceRay(Scene& scene, Ray r);
 
 int main(int argc, char ** argv)
 {
@@ -61,47 +73,61 @@ int main(int argc, char ** argv)
         exit(0);
     }
 
-    Vec3 position = objToGenVec(objData.vertexList[objData.camera->camera_pos_index]);
-    Vec3 focus = objToGenVec(objData.vertexList[objData.camera->camera_look_point_index]);
-    Vec3 up = objToGenVec(objData.normalList[objData.camera->camera_up_norm_index]);
+    Vec3 position(objData.vertexList[objData.camera->camera_pos_index]->e);
+    Vec3 focus(objData.vertexList[objData.camera->camera_look_point_index]->e);
+    Vec3 up(objData.normalList[objData.camera->camera_up_norm_index]->e);
 
     Camera camera = Camera::lookAt(position, focus, up, Mat::toRads(90));
 
 	RayGenerator generator = RayGenerator(camera, RES, RES);
 
 	//std::vector<Surface*> surfaces;
-	CompositeSurface scene(-1);
+	//CompositeSurface scene(-1);
+	Scene scene;
 	std::vector<Light> lights;
+
+	for (int i = 0; i < objData.materialCount; i++)
+	{
+		scene.addMaterial(objMaterialtoMaterial(objData.materialList[i]));
+	}
 
     for (int i = 0; i < objData.sphereCount; i++)
 	{
-		Vec3 center = objToGenVec(objData.vertexList[objData.sphereList[i]->pos_index]);
-		Vec3 equator = objToGenVec(objData.normalList[objData.sphereList[i]->equator_normal_index]);
-		Vec3 up = objToGenVec(objData.normalList[objData.sphereList[i]->up_normal_index]);
+		Vec3 center(objData.vertexList[objData.sphereList[i]->pos_index]->e);
+		Vec3 equator(objData.normalList[objData.sphereList[i]->equator_normal_index]->e);
+		Vec3 up(objData.normalList[objData.sphereList[i]->up_normal_index]->e);
 		float radius = Mat::magnitude(equator);
 
-		scene.addSurface(new Sphere(center, equator, up, radius, objData.sphereList[i]->material_index));
+		obj_material* mat = objData.materialList[objData.sphereList[i]->material_index];
+
+		scene.addSurface(new Sphere(center, equator, up, radius, mat->name));
 		//surfaces.push_back(new Sphere(center, equator, up, radius, objData.sphereList[i]->material_index));
 	}
 
 	for (int i = 0; i < objData.faceCount; i++)
 	{
-		Vec3 a = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[0]]);
+		Vec3 a(objData.vertexList[objData.faceList[i]->vertex_index[0]]->e);
 
 		for (int j = 2; j < objData.faceList[i]->vertex_count; j++)
 		{
-			Vec3 b = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[j - 1]]);
-			Vec3 c = objToGenVec(objData.vertexList[objData.faceList[i]->vertex_index[j]]);
+			Vec3 b(objData.vertexList[objData.faceList[i]->vertex_index[j - 1]]->e);
+			Vec3 c(objData.vertexList[objData.faceList[i]->vertex_index[j]]->e);
 
-			scene.addSurface(new Triangle(a, b, c, objData.faceList[i]->material_index));
+			obj_material* mat = objData.materialList[objData.faceList[i]->material_index];
+
+			scene.addSurface(new Triangle(a, b, c, mat->name));
 			//surfaces.push_back(new Triangle(a, b, c, objData.faceList[i]->material_index));
 		}
 	}
 
 	for (int i = 0; i < objData.lightPointCount; i++)
 	{
-		Vec3 position = objToGenVec(objData.vertexList[objData.lightPointList[i]->pos_index]);
-		lights.emplace_back(position, objData.lightPointList[i]->material_index);
+		Vec3 position(objData.vertexList[objData.lightPointList[i]->pos_index]->e);
+
+		obj_material* mat = objData.materialList[objData.lightPointList[i]->material_index];
+
+		scene.addLight(new Light(position, mat->name));
+		//lights.emplace_back(position, mat->name);
 
 		//scene.addSurface(new Sphere(position, Vec3(), Vec3(), 1, objData.lightPointList[i]->material_index));
 	}
@@ -112,71 +138,9 @@ int main(int argc, char ** argv)
 	{
 		for(int x=0; x<RES; x++)
 		{
-			bool hitSurface = false;
-			rayIntersectionInfo info;
-			Vec3 c{0,0,0};
-
 			Ray r = generator.getRay(x, y);
 
-			hitSurface = scene.hit(r, 0, 1000, info);
-			
-			if (hitSurface)
-			{
-				obj_material *surfaceMat = objData.materialList[info.materialID];
-
-				for (auto light = lights.begin(); light < lights.end(); light++)
-				{
-					obj_material *lightMat = objData.materialList[(*light).getMaterial()];
-
-					Vec3 lightDir = (*light).getPosition() - info.intersectionPoint;
-					float lightDistance = Mat::magnitude(lightDir);
-					lightDir = Mat::normalize(lightDir);
-
-					//std::cout << (*light).getPosition().toString() << std::endl; 
-
-					// diffuse lighting
-					float lDotn = Mat::dot(lightDir, info.surfaceNormal);
-
-					// specular lighting
-					float spec = 0;
-
-					if (lDotn > 0)
-					{
-						Vec3 reflectedLight = Mat::normalize(Mat::reflect(lightDir, info.surfaceNormal));
-						Vec3 view = Mat::normalize(camera.getPosition() - info.intersectionPoint);
-
-						if (Mat::dot(reflectedLight, view) > 0 && surfaceMat->shiny != 0)
-							spec = pow(Mat::dot(reflectedLight, view), surfaceMat->shiny);
-					}
-					else
-					{
-						lDotn = 0;
-					}
-
-					Ray shadowRay(info.intersectionPoint, lightDir);
-					rayIntersectionInfo unneeded;
-
-					if (scene.hit(shadowRay, 1 - Mat::dot(lightDir, info.surfaceNormal), lightDistance, unneeded))
-					{
-						lDotn = 0;
-						spec = 0;
-					}
-
-					for (int i = 0; i < 3; i++)
-					{
-						// ambient lighting
-						c[i] += surfaceMat->amb[i] * lightMat->amb[i];
-
-						// diffuse lighting
-						c[i] += surfaceMat->diff[i] * lightMat->diff[i] * lDotn;
-
-						// specular lighting
-						c[i] += surfaceMat->spec[i] * lightMat->spec[i] * spec;
-					}
-
-					//c = info.surfaceNormal;
-				}
-			}
+			Vec3 c = traceRay(scene, r);
 
 			for (int i = 0; i < 3; i++)
 			{
@@ -216,3 +180,67 @@ int main(int argc, char ** argv)
 	return 0;
 }
 
+
+Vec3 traceRay(Scene& scene, Ray r)
+{
+	bool hitSurface = false;
+	rayIntersectionInfo surfaceInfo, lightInfo;
+	Vec3 c{0,0,0};
+
+	hitSurface = scene.hitSurface(r, 0, 1000, surfaceInfo);
+	
+	if (!hitSurface)
+		return c;
+
+	const Material* surfaceMat = scene.getMaterial(surfaceInfo.materialID);
+
+	for (auto light = scene.getLights().begin(); light < scene.getLights().end(); light++)
+	{
+		const Material* lightMat = scene.getMaterial((*light)->getMaterialName());
+
+		Vec3 lightDir = (*light)->getPosition() - surfaceInfo.intersectionPoint;
+		float lightDistance = Mat::magnitude(lightDir);
+		lightDir = Mat::normalize(lightDir);
+
+		//std::cout << (*light).getPosition().toString() << std::endl; 
+
+		// diffuse lighting
+		float lDotn = Mat::dot(lightDir, surfaceInfo.surfaceNormal);
+
+		// specular lighting
+		float spec = 0;
+
+		if (lDotn > 0)
+		{
+			Vec3 reflectedLight = Mat::normalize(Mat::reflect(lightDir, surfaceInfo.surfaceNormal));
+			Vec3 view = Mat::normalize(-r.getDirection());
+			// Vec3 view = Mat::normalize(scene.getCamera().getPosition() - surfaceInfo.intersectionPoint);
+
+			if (Mat::dot(reflectedLight, view) > 0 && surfaceMat->shiny != 0)
+				spec = pow(Mat::dot(reflectedLight, view), surfaceMat->shiny);
+		}
+		else
+		{
+			lDotn = 0;
+		}
+
+		Ray shadowRay(surfaceInfo.intersectionPoint + surfaceInfo.surfaceNormal * 0.0001f, lightDir);
+		rayIntersectionInfo unneeded;
+
+		if (scene.hitSurface(shadowRay, 0, lightDistance, unneeded))
+		{
+			lDotn = 0;
+			spec = 0;
+		}
+
+		c += surfaceMat->amb * lightMat->amb;
+
+		c += surfaceMat->diff * lightMat->diff * lDotn;
+
+		c += surfaceMat->spec * surfaceMat->spec * spec;
+	}
+
+	//c = surfaceInfo.surfaceNormal;
+
+	return c;
+}

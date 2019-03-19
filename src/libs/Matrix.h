@@ -22,8 +22,10 @@ namespace Mat
 
 	public:
 		//TODO: passing 0 for diagVal looks the same as passing nullptr for values, resulting in ambiguous calls..
-		explicit Matrix(T diagVal = 1);
-		explicit Matrix(T values[]);
+		template<typename T2 = T, typename std::enable_if<std::is_fundamental<T2>::value, int>::type = 1>
+		explicit Matrix(T2 diagVal = 1);
+		template<typename T2 = T>
+		explicit Matrix(T2 values[]);
 		explicit Matrix(std::initializer_list<T> values);
 		Matrix(const Matrix &mat);
 		~Matrix();
@@ -49,8 +51,10 @@ namespace Mat
 	class Vector : public Matrix<length, 1, T>
 	{
 	public:
-		explicit Vector(T initVal = 0) : Matrix<length, 1, T>(initVal){}
-		explicit Vector(T values[]) : Matrix<length, 1, T>(values){}
+		template<typename T2 = T>
+		explicit Vector(T2 initVal = 0) : Matrix<length, 1, T>(initVal){}
+		template<typename T2 = T>
+		explicit Vector(T2 values[]) : Matrix<length, 1, T>(values){}
 		explicit Vector(std::initializer_list<T> values) : Matrix<length, 1, T>(values){}
 		Vector(const Matrix<length, 1, T> &mat) : Matrix<length, 1, T>(mat){}
 
@@ -71,7 +75,8 @@ namespace Mat
 
 
 	template<unsigned int height, unsigned int width, typename T>
-	Matrix<height, width, T>::Matrix(T diagVal)
+	template<typename T2, typename std::enable_if<std::is_fundamental<T2>::value, int>::type>
+	Matrix<height, width, T>::Matrix(T2 diagVal)
 	{
 		for (unsigned int i = 0; i < height; i++)
 		{
@@ -79,7 +84,7 @@ namespace Mat
 			{
 				if (i == j || width == 1)
 				{
-					vals[i*width + j] = diagVal;
+					vals[i*width + j] = static_cast<T>(diagVal);
 				}
 				else
 				{
@@ -90,11 +95,12 @@ namespace Mat
 	}
 	
 	template<unsigned int height, unsigned int width, typename T>
-	Matrix<height, width, T>::Matrix(T values[])
+	template<typename T2>
+	Matrix<height, width, T>::Matrix(T2 values[])
 	{
 		for (unsigned int i = 0; i < height*width; i++)
 		{
-			vals[i] = values[i];
+			vals[i] = static_cast<T>(values[i]);
 		}
 	}
 
@@ -168,6 +174,20 @@ namespace Mat
 			ret[i] = left[i] + right[i];
 		}
 		return ret;
+	}
+
+
+
+	template<unsigned int height, unsigned int width, typename T>
+	Matrix<height, width, T>& operator+=(Matrix<height, width, T> &left, const Matrix<height, width, T> &right)
+	{
+		return (left = left + right);
+	}
+
+	template<unsigned int height, typename T>
+	Vector<height, T>& operator+=(Vector<height, T> &left, const Vector<height, T> &right)
+	{
+		return (left = left + right);
 	}
 
 
@@ -258,6 +278,18 @@ namespace Mat
 			{
 				ret[row] += left[row][i] * right[i];
 			}
+		}
+		return ret;
+	}
+
+	template<unsigned int height, typename T>
+	Vector<height, T> operator*(const Vector<height, T> &left, const Vector<height, T> &right)
+	{
+		Vector<height, T> ret;
+
+		for (unsigned int row = 0; row < height; row++)
+		{
+			ret[row] = left[row] * right[row];
 		}
 		return ret;
 	}

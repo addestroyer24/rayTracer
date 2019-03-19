@@ -3,12 +3,14 @@
 
 #include "libs/Matrix.h"
 
+#include <string>
+
 struct rayIntersectionInfo
 {
     float intersectionTime;
     Vec3 intersectionPoint;
     Vec3 surfaceNormal;
-    int materialID;
+    std::string materialID;
     //Material
 };
 

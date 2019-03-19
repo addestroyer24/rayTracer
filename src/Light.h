@@ -3,20 +3,22 @@
 
 #include "libs/Matrix.h"
 
+#include <string>
+
 class Light
 {
 private:
     Vec3 position;
-    int materialID;
+    std::string materialID;
 
 public:
-    Light(Vec3 position, int material);
+    Light(Vec3 position, std::string material);
 
     Vec3 getPosition();
-    int getMaterial();
+    std::string getMaterialName();
 };
 
-Light::Light(Vec3 position, int material)
+Light::Light(Vec3 position, std::string material)
     : position(position), materialID(material)
 {}
 
@@ -25,7 +27,7 @@ Vec3 Light::getPosition()
     return this->position;
 }
 
-int Light::getMaterial()
+std::string Light::getMaterialName()
 {
     return this->materialID;
 }

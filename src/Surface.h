@@ -4,21 +4,23 @@
 #include "Ray.h"
 #include "rayIntersectionInfo.h"
 
+#include <string>
+
 class Surface
 {
 protected:
-    int materialID;
+    std::string materialName;
 
 public:
-    Surface(int materialID);
+    Surface(std::string materialID);
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record) = 0;
     //virtual BoundingBox getBoundingBox() = 0;
 
     virtual ~Surface() = default;
 };
 
-Surface::Surface(int materialID)
-    : materialID(materialID)
+Surface::Surface(std::string materialID)
+    : materialName(materialID)
 {}
 
 #endif 

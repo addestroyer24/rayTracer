@@ -8,6 +8,7 @@
 #include "libs/Matrix.h"
 
 #include <math.h>
+#include <string>
 
 class Sphere : public Surface
 {
@@ -18,13 +19,13 @@ private:
     float radius;
 
 public:
-    Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, int materialID);
+    Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
     //virtual BoundingBox getBoundingBox() = 0;
 };
 
-Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, int materialID)
+Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID)
     : Surface(materialID), center(center), radius(radius)
 {
     this->equatorNormal = Mat::normalize(equatorNormal);
@@ -34,7 +35,7 @@ Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, int
 bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
 {
     Vec3 d = ray.getDirection();
-    Vec3 e = ray.getOrigin();
+    Vec3 e = ray.positionAtTime(0);
     float dDotemc = Mat::dot(d, e - this->center);
     float dDotd = Mat::dot(d, d);
     float discriminant = dDotemc * dDotemc - dDotd * (Mat::dot(e - this->center, e - this->center) - this->radius * this->radius);
@@ -60,9 +61,9 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
         return false;
 
     record.intersectionTime = time;
-    record.intersectionPoint = ray.getOrigin() + ray.getDirection() * time;
+    record.intersectionPoint = ray.positionAtTime(time);
     record.surfaceNormal = Mat::normalize(record.intersectionPoint - this->center);
-    record.materialID = this->materialID;
+    record.materialID = this->materialName;
     
     return true;
 }

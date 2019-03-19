@@ -14,7 +14,7 @@ private:
     std::vector<Surface*> surfaces;
 
 public:
-    CompositeSurface(int materialID);
+    CompositeSurface(std::string materialID);
     ~CompositeSurface();
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
@@ -23,7 +23,7 @@ public:
     //int getMaterialID();
 };
 
-CompositeSurface::CompositeSurface(int materialID)
+CompositeSurface::CompositeSurface(std::string materialID)
     : Surface(materialID)
 {}
 

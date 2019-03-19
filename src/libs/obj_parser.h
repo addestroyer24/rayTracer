@@ -502,7 +502,7 @@ static int obj_parse_vertex_index(int *vertex_index, int *texture_index, int *no
 static obj_face* obj_parse_face(obj_growable_scene_data *scene)
 {
 	int vertex_count;
-	obj_face *face = (obj_face*)malloc(sizeof(obj_face));
+	obj_face *face = (obj_face*)calloc(1, sizeof(obj_face));
 	
 	vertex_count = obj_parse_vertex_index(face->vertex_index, face->texture_index, face->normal_index);
 	obj_convert_to_list_index_v(scene->vertex_list.item_count, face->vertex_index);
@@ -609,15 +609,13 @@ static int obj_parse_mtl_file(const char *filename, list *material_list)
 		return 0;
 	}
 	
-	list_make(material_list, 10, 1);
-	
 	while( fgets(current_line, OBJ_LINE_SIZE, mtl_file_stream) )
 	{
 		current_token = strtok( current_line, " \t\n\r");
 		line_number++;
 		
 		//skip comments
-		if( current_token == NULL || strequal(current_token, "//") || strequal(current_token, "#"))
+		if( current_token == NULL || strequal(current_token, "//") || current_token[0] == '#')
 			continue;
 		
 		

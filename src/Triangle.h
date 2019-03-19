@@ -5,6 +5,8 @@
 
 #include "libs/Matrix.h"
 
+#include <string>
+
 class Triangle : public Surface
 {
 private:
@@ -14,12 +16,12 @@ private:
     Vec3 normal;
 
 public:
-    Triangle(Vec3 a, Vec3 b, Vec3 c, int materialID);
+    Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
 };
 
-Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, int materialID)
+Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID)
     : Surface(materialID), a(a), b(b), c(c)
 {
     this->normal = Mat::normalize(Mat::cross(b - a, c - b));
@@ -31,12 +33,12 @@ bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo 
     if (Mat::dot(ray.getDirection(), this->normal) == 0)
         return false;
 
-    float t = Mat::dot(this->a - ray.getOrigin(), this->normal) / Mat::dot(ray.getDirection(), this->normal);
+    float t = Mat::dot(this->a - ray.positionAtTime(0), this->normal) / Mat::dot(ray.getDirection(), this->normal);
 
     if (t < startTime)
         return false;
 
-    Vec3 x = ray.getOrigin() + t * ray.getDirection();
+    Vec3 x = ray.positionAtTime(t);
 
     if (Mat::dot(Mat::cross(this->b - this->a, x - this->a), this->normal) < 0)
         return false;
@@ -53,7 +55,7 @@ bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo 
     record.intersectionTime = t;
     record.intersectionPoint = x;
     record.surfaceNormal = this->normal;
-    record.materialID = this->materialID;
+    record.materialID = this->materialName;
 
     return true;
 
