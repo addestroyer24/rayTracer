@@ -4,6 +4,8 @@
 //Hard code resolution for now
 #define RES 100
 
+#define REFLECTION_DEPTH_LIMIT 5
+
 #include "Camera.h"
 //#include "CompositeSurface.h"
 #include "Light.h"
@@ -45,7 +47,7 @@ Material* objMaterialtoMaterial(obj_material* mat)
 }
 
 
-Vec3 traceRay(Scene& scene, Ray r);
+Vec3 traceRay(Scene& scene, Ray r, int currentDepth = 0);
 
 int main(int argc, char ** argv)
 {
@@ -181,16 +183,16 @@ int main(int argc, char ** argv)
 }
 
 
-Vec3 traceRay(Scene& scene, Ray r)
+Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 {
 	bool hitSurface = false;
-	rayIntersectionInfo surfaceInfo, lightInfo;
-	Vec3 c{0,0,0};
+	rayIntersectionInfo surfaceInfo;
+	Vec3 returnColor(0);
 
 	hitSurface = scene.hitSurface(r, 0, 1000, surfaceInfo);
 	
 	if (!hitSurface)
-		return c;
+		return returnColor;
 
 	const Material* surfaceMat = scene.getMaterial(surfaceInfo.materialID);
 
@@ -212,7 +214,7 @@ Vec3 traceRay(Scene& scene, Ray r)
 
 		if (lDotn > 0)
 		{
-			Vec3 reflectedLight = Mat::normalize(Mat::reflect(lightDir, surfaceInfo.surfaceNormal));
+			Vec3 reflectedLight = Mat::normalize(Mat::reflectOut(lightDir, surfaceInfo.surfaceNormal));
 			Vec3 view = Mat::normalize(-r.getDirection());
 			// Vec3 view = Mat::normalize(scene.getCamera().getPosition() - surfaceInfo.intersectionPoint);
 
@@ -233,14 +235,28 @@ Vec3 traceRay(Scene& scene, Ray r)
 			spec = 0;
 		}
 
-		c += surfaceMat->amb * lightMat->amb;
+		Vec3 surfaceColor(0);
 
-		c += surfaceMat->diff * lightMat->diff * lDotn;
+		surfaceColor += surfaceMat->amb * lightMat->amb;
 
-		c += surfaceMat->spec * surfaceMat->spec * spec;
+		surfaceColor += surfaceMat->diff * lightMat->diff * lDotn;
+
+		surfaceColor += surfaceMat->spec * surfaceMat->spec * spec;
+
+		if (surfaceMat->reflect > 0 && currentDepth <= REFLECTION_DEPTH_LIMIT)
+		{
+			Ray reflectedRay(surfaceInfo.intersectionPoint + surfaceInfo.surfaceNormal * 0.0001f, 
+				Mat::reflectIn(r.getDirection(), surfaceInfo.surfaceNormal));
+
+			Vec3 reflectColor = traceRay(scene, reflectedRay, currentDepth + 1);
+
+			surfaceColor = surfaceColor * (1 - surfaceMat->reflect) + reflectColor * surfaceMat->reflect;
+		}
+
+		returnColor += surfaceColor;
 	}
 
 	//c = surfaceInfo.surfaceNormal;
 
-	return c;
+	return returnColor;
 }

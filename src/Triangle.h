@@ -1,10 +1,12 @@
 #ifndef _TRIANGLE_H
 #define _TRIANGLE_H
 
+#include "BoundingBox.h"
 #include "Surface.h"
 
 #include "libs/Matrix.h"
 
+#include <algorithm>
 #include <string>
 
 class Triangle : public Surface
@@ -19,6 +21,7 @@ public:
     Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
+    virtual BoundingBox getBoundingBox();
 };
 
 Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID)
@@ -59,6 +62,21 @@ bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo 
 
     return true;
 
+}
+
+BoundingBox Triangle::getBoundingBox()
+{
+    Vec3 min;
+    min[0] = std::min({a[0], b[0], c[0]});
+    min[1] = std::min({a[1], b[1], c[1]});
+    min[2] = std::min({a[2], b[2], c[2]});
+
+    Vec3 max;
+    max[0] = std::max({a[0], b[0], c[0]});
+    max[1] = std::max({a[1], b[1], c[1]});
+    max[2] = std::max({a[2], b[2], c[2]});
+
+    return BoundingBox(min, max);
 }
 
 #endif

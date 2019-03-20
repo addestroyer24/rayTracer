@@ -176,6 +176,31 @@ namespace Mat
 		return ret;
 	}
 
+	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
+	Matrix<height, width, TMat> operator+(const Matrix<height, width, TMat> &left, TNum num)
+	{
+		Matrix<height, width, TMat> ret;
+		for (unsigned int i = 0; i < height; i++)
+		{
+			for (unsigned int j = 0; j < width; j++)
+			{
+				ret[i][j] = left[i][j] + num;
+			}
+		}
+		return ret;
+	}
+
+	template<unsigned int height, typename TMat, typename TNum>
+	Vector<height, TMat> operator+(const Vector<height, TMat> &left, TNum num)
+	{
+		Vector<height, TMat> ret;
+		for (unsigned int i = 0; i < height; i++)
+		{
+			ret[i] = left[i] + num;
+		}
+		return ret;
+	}
+
 
 
 	template<unsigned int height, unsigned int width, typename T>
@@ -216,6 +241,45 @@ namespace Mat
 
 		}
 		return ret;
+	}
+
+	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
+	Matrix<height, width, TMat> operator-(const Matrix<height, width, TMat> &left, TNum num)
+	{
+		Matrix<height, width, TMat> ret;
+		for (unsigned int i = 0; i < height; i++)
+		{
+			for (unsigned int j = 0; j < width; j++)
+			{
+				ret[i][j] = left[i][j] - num;
+			}
+		}
+		return ret;
+	}
+
+	template<unsigned int height, typename TMat, typename TNum>
+	Vector<height, TMat> operator-(const Vector<height, TMat> &left, TNum num)
+	{
+		Vector<height, TMat> ret;
+		for (unsigned int i = 0; i < height; i++)
+		{
+			ret[i] = left[i] - num;
+		}
+		return ret;
+	}
+
+
+
+	template<unsigned int height, unsigned int width, typename T>
+	Matrix<height, width, T>& operator-=(Matrix<height, width, T> &left, const Matrix<height, width, T> &right)
+	{
+		return (left = left - right);
+	}
+
+	template<unsigned int height, typename T>
+	Vector<height, T>& operator-=(Vector<height, T> &left, const Vector<height, T> &right)
+	{
+		return (left = left - right);
 	}
 
 
@@ -473,9 +537,15 @@ namespace Mat
 	}
 
 	template<typename T>
-	Vector<3, T> reflect(const Vector<3, T> outgoing, const Vector<3, T> axis)
+	Vector<3, T> reflectOut(const Vector<3, T> outgoing, const Vector<3, T> axis)
 	{
 		return normalize(2 * dot(outgoing, axis) * axis - outgoing);
+	}
+
+	template<typename T>
+	Vector<3, T> reflectIn(const Vector<3, T> incoming, const Vector<3, T> axis)
+	{
+		return normalize(incoming - 2 * Mat::dot(incoming, axis) * axis);
 	}
 
 	float toRads(float in)

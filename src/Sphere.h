@@ -1,6 +1,7 @@
 #ifndef _SPHERE_H
 #define _SPHERE_H
 
+#include "BoundingBox.h"
 #include "Surface.h"
 
 #include "rayIntersectionInfo.h"
@@ -22,7 +23,7 @@ public:
     Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
-    //virtual BoundingBox getBoundingBox() = 0;
+    virtual BoundingBox getBoundingBox();
 };
 
 Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID)
@@ -66,6 +67,11 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
     record.materialID = this->materialName;
     
     return true;
+}
+
+BoundingBox Sphere::getBoundingBox()
+{
+    return BoundingBox(this->center - this->radius, this->center + this->radius);
 }
 
 #endif 
