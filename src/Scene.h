@@ -1,6 +1,7 @@
 #ifndef _SCENE_H
 #define _SCENE_H
 
+#include "BoundingBox.h"
 #include "Camera.h"
 #include "Light.h"
 #include "Material.h"
@@ -15,8 +16,9 @@ class Scene
 private:
     //Camera camera;
     std::vector<Light*> lights;
-    std::vector<Surface*> surfaces;
     std::unordered_map<std::string, Material*> materials;
+
+    BoundingBox sceneTree;
 
 public:
     Scene() = default;
@@ -26,7 +28,8 @@ public:
     void addSurface(Surface*);
     void addMaterial(Material*);
 
-    // Camera getCamera();
+    void finalizeScene();
+
     std::vector<Light*>& getLights();
     const Material* getMaterial(std::string name);
 
@@ -34,18 +37,9 @@ public:
 
 };
 
-// Scene::Scene(Camera cam)
-//     : camera(cam)
-// {}
-
 Scene::~Scene()
 {
     for (auto iter = lights.begin(); iter != lights.end(); iter++)
-    {
-        delete *iter;
-    }
-
-    for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
     {
         delete *iter;
     }
@@ -63,7 +57,7 @@ void Scene::addLight(Light* light)
 
 void Scene::addSurface(Surface* surf)
 {
-    this->surfaces.push_back(surf);
+    this->sceneTree.encompass(surf);
 }
 
 void Scene::addMaterial(Material* mat)
@@ -72,10 +66,10 @@ void Scene::addMaterial(Material* mat)
     this->materials[mat->name] = mat;
 }
 
-// Camera Scene::getCamera()
-// {
-//     return this->camera;
-// }
+void Scene::finalizeScene()
+{
+    this->sceneTree.finalizeTree();
+}
 
 std::vector<Light*>& Scene::getLights()
 {
@@ -89,21 +83,22 @@ const Material* Scene::getMaterial(std::string name)
 
 bool Scene::hitSurface(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
 {
-    bool hitSurface = false;
-    rayIntersectionInfo newInfo;
+    // bool hitSurface = false;
+    // rayIntersectionInfo newInfo;
 
-    record.intersectionTime = endTime;
+    // record.intersectionTime = endTime;
 
-    for (auto iter = this->surfaces.begin(); iter != this->surfaces.end(); iter++)
-    {
-        if ((*iter)->hit(ray, startTime, endTime, newInfo))
-        {
-            record = newInfo;
-            endTime = record.intersectionTime;
-            hitSurface = true;
-        }
-    }
-    return hitSurface;
+    // for (auto iter = this->surfaces.begin(); iter != this->surfaces.end(); iter++)
+    // {
+    //     if ((*iter)->hit(ray, startTime, endTime, newInfo))
+    //     {
+    //         record = newInfo;
+    //         endTime = record.intersectionTime;
+    //         hitSurface = true;
+    //     }
+    // }
+    // return hitSurface;
+    return this->sceneTree.hit(ray, startTime, endTime, record);
 }
 
 #endif

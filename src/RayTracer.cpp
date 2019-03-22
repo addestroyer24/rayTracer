@@ -2,7 +2,7 @@
 // generator creates the test images. My ray dirs are normalized.
 
 //Hard code resolution for now
-#define RES 100
+#define RES 1000
 
 #define REFLECTION_DEPTH_LIMIT 5
 
@@ -134,6 +134,8 @@ int main(int argc, char ** argv)
 		//scene.addSurface(new Sphere(position, Vec3(), Vec3(), 1, objData.lightPointList[i]->material_index));
 	}
 
+	scene.finalizeScene();
+
 	float maxComponent = 1;
 
 	for(int y=0; y<RES; y++)
@@ -193,6 +195,8 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 	
 	if (!hitSurface)
 		return returnColor;
+	
+	return surfaceInfo.surfaceNormal / 2 + 0.5;
 
 	const Material* surfaceMat = scene.getMaterial(surfaceInfo.materialID);
 
@@ -243,20 +247,18 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 
 		surfaceColor += surfaceMat->spec * surfaceMat->spec * spec;
 
-		if (surfaceMat->reflect > 0 && currentDepth <= REFLECTION_DEPTH_LIMIT)
-		{
-			Ray reflectedRay(surfaceInfo.intersectionPoint + surfaceInfo.surfaceNormal * 0.0001f, 
-				Mat::reflectIn(r.getDirection(), surfaceInfo.surfaceNormal));
-
-			Vec3 reflectColor = traceRay(scene, reflectedRay, currentDepth + 1);
-
-			surfaceColor = surfaceColor * (1 - surfaceMat->reflect) + reflectColor * surfaceMat->reflect;
-		}
-
 		returnColor += surfaceColor;
 	}
 
-	//c = surfaceInfo.surfaceNormal;
+	if (surfaceMat->reflect > 0 && currentDepth <= REFLECTION_DEPTH_LIMIT)
+	{
+		Ray reflectedRay(surfaceInfo.intersectionPoint + surfaceInfo.surfaceNormal * 0.0001f, 
+			Mat::reflectIn(r.getDirection(), surfaceInfo.surfaceNormal));
+
+		Vec3 reflectColor = traceRay(scene, reflectedRay, currentDepth + 1);
+
+		returnColor = returnColor * (1 - surfaceMat->reflect) + reflectColor * surfaceMat->reflect;
+	}
 
 	return returnColor;
 }

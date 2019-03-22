@@ -23,7 +23,9 @@ public:
     Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
-    virtual BoundingBox getBoundingBox();
+
+    virtual Vec3 getCentroid();
+    virtual surfaceBounds getSurfaceBounds();
 };
 
 Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID)
@@ -69,9 +71,14 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
     return true;
 }
 
-BoundingBox Sphere::getBoundingBox()
+Vec3 Sphere::getCentroid()
 {
-    return BoundingBox(this->center - this->radius, this->center + this->radius);
+    return this->center;
+}
+
+surfaceBounds Sphere::getSurfaceBounds()
+{
+    return surfaceBounds(this->center - this->radius, this->center + this->radius);
 }
 
 #endif 

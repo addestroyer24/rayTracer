@@ -15,19 +15,23 @@ private:
     Vec3 a;
     Vec3 b;
     Vec3 c;
+    Vec3 centroid;
     Vec3 normal;
 
 public:
     Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID);
 
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
-    virtual BoundingBox getBoundingBox();
+
+    virtual Vec3 getCentroid();
+    virtual surfaceBounds getSurfaceBounds();
 };
 
 Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID)
     : Surface(materialID), a(a), b(b), c(c)
 {
     this->normal = Mat::normalize(Mat::cross(b - a, c - b));
+    this->centroid = (a + b + c) / 3;
 }
 
 bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
@@ -64,7 +68,12 @@ bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo 
 
 }
 
-BoundingBox Triangle::getBoundingBox()
+Vec3 Triangle::getCentroid()
+{
+    return this->centroid;
+}
+
+surfaceBounds Triangle::getSurfaceBounds()
 {
     Vec3 min;
     min[0] = std::min({a[0], b[0], c[0]});
@@ -76,7 +85,7 @@ BoundingBox Triangle::getBoundingBox()
     max[1] = std::max({a[1], b[1], c[1]});
     max[2] = std::max({a[2], b[2], c[2]});
 
-    return BoundingBox(min, max);
+    return surfaceBounds(min, max);
 }
 
 #endif
