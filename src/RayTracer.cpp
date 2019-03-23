@@ -4,7 +4,7 @@
 //Hard code resolution for now
 #define RES 1000
 
-#define REFLECTION_DEPTH_LIMIT 5
+#define REFLECTION_DEPTH_LIMIT 8
 
 #include "Camera.h"
 //#include "CompositeSurface.h"
@@ -55,7 +55,7 @@ int main(int argc, char ** argv)
 	if(argc < 3)
 	{
 		printf("Usage: %s input.obj output.png\n", argv[0]);
-		exit(0);
+		exit(1);
 	}
 
 	Buffer<Vec3> colorBuffer(RES, RES);
@@ -65,14 +65,14 @@ int main(int argc, char ** argv)
 	if (!objData.load(argv[1]))
     {
         printf("Could not load object file %s\n", argv[1]);
-        exit(0);
+        exit(2);
     }
 
 	//create a camera object
     if (!objData.camera)
     {
         printf("No camera loaded!\n");
-        exit(0);
+        exit(3);
     }
 
     Vec3 position(objData.vertexList[objData.camera->camera_pos_index]->e);
@@ -83,8 +83,6 @@ int main(int argc, char ** argv)
 
 	RayGenerator generator = RayGenerator(camera, RES, RES);
 
-	//std::vector<Surface*> surfaces;
-	//CompositeSurface scene(-1);
 	Scene scene;
 	std::vector<Light> lights;
 
@@ -103,7 +101,6 @@ int main(int argc, char ** argv)
 		obj_material* mat = objData.materialList[objData.sphereList[i]->material_index];
 
 		scene.addSurface(new Sphere(center, equator, up, radius, mat->name));
-		//surfaces.push_back(new Sphere(center, equator, up, radius, objData.sphereList[i]->material_index));
 	}
 
 	for (int i = 0; i < objData.faceCount; i++)
@@ -118,7 +115,6 @@ int main(int argc, char ** argv)
 			obj_material* mat = objData.materialList[objData.faceList[i]->material_index];
 
 			scene.addSurface(new Triangle(a, b, c, mat->name));
-			//surfaces.push_back(new Triangle(a, b, c, objData.faceList[i]->material_index));
 		}
 	}
 
@@ -129,12 +125,13 @@ int main(int argc, char ** argv)
 		obj_material* mat = objData.materialList[objData.lightPointList[i]->material_index];
 
 		scene.addLight(new Light(position, mat->name));
-		//lights.emplace_back(position, mat->name);
-
-		//scene.addSurface(new Sphere(position, Vec3(), Vec3(), 1, objData.lightPointList[i]->material_index));
 	}
 
 	scene.finalizeScene();
+
+	const int progressBarSize = 40;
+	int progressPercent = 0;
+	int lastProgressPercent = -1;
 
 	float maxComponent = 1;
 
@@ -153,14 +150,21 @@ int main(int argc, char ** argv)
 			}
 
 			colorBuffer.at(x,RES - 1 - y) = c;
+
+			progressPercent = (y * RES + x + 1) * progressBarSize / (RES * RES);
+			if (progressPercent != lastProgressPercent)
+			{
+				lastProgressPercent = progressPercent;
+				std::cout << "\r[";
+				for (int i = 0; i < progressBarSize; i++)
+				{
+					std::cout << (i < progressPercent ? "#" : " ");
+				}
+				std::cout << "]" << std::flush;
+			}
 		}
 	}
-
-	// for (auto iter = surfaces.begin(); iter != surfaces.end(); iter++)
-	// {
-	// 	delete *iter;
-	// }
-	// surfaces.clear();
+	std::cout << std::endl;
 
 	//create a frame buffer for RESxRES
     Buffer<Color> outputBuffer(RES, RES);
@@ -169,12 +173,7 @@ int main(int argc, char ** argv)
 	{
 		for(int x=0; x<RES; x++)
 		{
-			Vec3& floatColor = colorBuffer.at(x, y);
-			Color& charColor = outputBuffer.at(x, y);
-			charColor = (Color)(floatColor * 255 / maxComponent);
-			// charColor[0] = (unsigned char)(floatColor[0] * 255 / maxComponent);
-			// charColor[1] = (unsigned char)(floatColor[1] * 255 / maxComponent);
-			// charColor[2] = (unsigned char)(floatColor[2] * 255 / maxComponent);
+			outputBuffer.at(x, y) = (Color)(colorBuffer.at(x, y) * 255 / maxComponent);
 		}
 	}
 
@@ -191,12 +190,13 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 	rayIntersectionInfo surfaceInfo;
 	Vec3 returnColor(0);
 
-	hitSurface = scene.hitSurface(r, 0, 1000, surfaceInfo);
+	hitSurface = scene.hitSurface(r, 0, 1000000, surfaceInfo);
 	
 	if (!hitSurface)
 		return returnColor;
 	
-	return surfaceInfo.surfaceNormal / 2 + 0.5;
+	if (surfaceInfo.materialID == "")
+		return surfaceInfo.surfaceNormal / 2 + 0.5;
 
 	const Material* surfaceMat = scene.getMaterial(surfaceInfo.materialID);
 

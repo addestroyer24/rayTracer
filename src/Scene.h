@@ -1,7 +1,7 @@
 #ifndef _SCENE_H
 #define _SCENE_H
 
-#include "BoundingBox.h"
+#include "BVHTree.h"
 #include "Camera.h"
 #include "Light.h"
 #include "Material.h"
@@ -17,8 +17,9 @@ private:
     //Camera camera;
     std::vector<Light*> lights;
     std::unordered_map<std::string, Material*> materials;
+    std::vector<Surface*> surfaces;
 
-    BoundingBox sceneTree;
+    BVHTree* sceneTree;
 
 public:
     Scene() = default;
@@ -48,6 +49,8 @@ Scene::~Scene()
     {
         delete iter->second;
     }
+
+    delete sceneTree;
 }
 
 void Scene::addLight(Light* light)
@@ -57,7 +60,7 @@ void Scene::addLight(Light* light)
 
 void Scene::addSurface(Surface* surf)
 {
-    this->sceneTree.encompass(surf);
+    this->surfaces.push_back(surf);
 }
 
 void Scene::addMaterial(Material* mat)
@@ -68,7 +71,9 @@ void Scene::addMaterial(Material* mat)
 
 void Scene::finalizeScene()
 {
-    this->sceneTree.finalizeTree();
+    this->sceneTree = new BVHTree(this->surfaces);
+    this->surfaces.clear();
+    this->surfaces.resize(0);
 }
 
 std::vector<Light*>& Scene::getLights()
@@ -83,22 +88,7 @@ const Material* Scene::getMaterial(std::string name)
 
 bool Scene::hitSurface(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
 {
-    // bool hitSurface = false;
-    // rayIntersectionInfo newInfo;
-
-    // record.intersectionTime = endTime;
-
-    // for (auto iter = this->surfaces.begin(); iter != this->surfaces.end(); iter++)
-    // {
-    //     if ((*iter)->hit(ray, startTime, endTime, newInfo))
-    //     {
-    //         record = newInfo;
-    //         endTime = record.intersectionTime;
-    //         hitSurface = true;
-    //     }
-    // }
-    // return hitSurface;
-    return this->sceneTree.hit(ray, startTime, endTime, record);
+    return this->sceneTree->hit(ray, startTime, endTime, record);
 }
 
 #endif

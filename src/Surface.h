@@ -1,8 +1,7 @@
 #ifndef _SURFACE_H
 #define _SURFACE_H
 
-// #include "BoundingBox.h"
-using surfaceBounds = std::pair<Vec3, Vec3>;
+#include "BoundingBox.h"
 #include "Ray.h"
 #include "rayIntersectionInfo.h"
 
@@ -20,7 +19,7 @@ public:
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record) = 0;
 
     virtual Vec3 getCentroid() = 0;
-    virtual surfaceBounds getSurfaceBounds() = 0;
+    virtual BoundingBox getBoundingBox() = 0;
 };
 
 Surface::Surface(std::string materialID)

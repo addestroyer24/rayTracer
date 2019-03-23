@@ -24,7 +24,7 @@ public:
     virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
 
     virtual Vec3 getCentroid();
-    virtual surfaceBounds getSurfaceBounds();
+    virtual BoundingBox getBoundingBox();
 };
 
 Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID)
@@ -73,7 +73,7 @@ Vec3 Triangle::getCentroid()
     return this->centroid;
 }
 
-surfaceBounds Triangle::getSurfaceBounds()
+BoundingBox Triangle::getBoundingBox()
 {
     Vec3 min;
     min[0] = std::min({a[0], b[0], c[0]});
@@ -85,7 +85,7 @@ surfaceBounds Triangle::getSurfaceBounds()
     max[1] = std::max({a[1], b[1], c[1]});
     max[2] = std::max({a[2], b[2], c[2]});
 
-    return surfaceBounds(min, max);
+    return BoundingBox(min, max);
 }
 
 #endif
