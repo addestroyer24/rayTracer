@@ -30,6 +30,7 @@ namespace Mat
 		Matrix(const Matrix &mat);
 		~Matrix();
 
+		//can get nontrivial speed up by bypassing this in operators to access vals directly..
 		T* operator[](int row);
 		T const* operator[](int row) const;
 
@@ -152,12 +153,12 @@ namespace Mat
 	template<unsigned int height, unsigned int width, typename T>
 	Matrix<height, width, T> operator+(const Matrix<height, width, T> &left, const Matrix<height, width, T> &right)
 	{
-		Matrix<height, width, T> ret;
+		Matrix<height, width, T> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
 			for (unsigned int j = 0; j < width; j++)
 			{
-				ret[i][j] = left[i][j] + right[i][j];
+				ret[i][j] += right[i][j];
 			}
 		}
 		return ret;
@@ -168,10 +169,10 @@ namespace Mat
 	template<unsigned int height, typename T>
 	Vector<height, T> operator+(const Vector<height, T> &left, const Vector<height, T> &right)
 	{
-		Vector<height, T> ret;
+		Vector<height, T> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
-			ret[i] = left[i] + right[i];
+			ret[i] += right[i];
 		}
 		return ret;
 	}
@@ -179,12 +180,12 @@ namespace Mat
 	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
 	Matrix<height, width, TMat> operator+(const Matrix<height, width, TMat> &left, TNum num)
 	{
-		Matrix<height, width, TMat> ret;
+		Matrix<height, width, TMat> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
 			for (unsigned int j = 0; j < width; j++)
 			{
-				ret[i][j] = left[i][j] + num;
+				ret[i][j] += num;
 			}
 		}
 		return ret;
@@ -193,10 +194,10 @@ namespace Mat
 	template<unsigned int height, typename TMat, typename TNum>
 	Vector<height, TMat> operator+(const Vector<height, TMat> &left, TNum num)
 	{
-		Vector<height, TMat> ret;
+		Vector<height, TMat> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
-			ret[i] = left[i] + num;
+			ret[i] += num;
 		}
 		return ret;
 	}
@@ -246,12 +247,12 @@ namespace Mat
 	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
 	Matrix<height, width, TMat> operator-(const Matrix<height, width, TMat> &left, TNum num)
 	{
-		Matrix<height, width, TMat> ret;
+		Matrix<height, width, TMat> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
 			for (unsigned int j = 0; j < width; j++)
 			{
-				ret[i][j] = left[i][j] - num;
+				ret[i][j] -= num;
 			}
 		}
 		return ret;
@@ -260,10 +261,10 @@ namespace Mat
 	template<unsigned int height, typename TMat, typename TNum>
 	Vector<height, TMat> operator-(const Vector<height, TMat> &left, TNum num)
 	{
-		Vector<height, TMat> ret;
+		Vector<height, TMat> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
-			ret[i] = left[i] - num;
+			ret[i] -= num;
 		}
 		return ret;
 	}
@@ -287,12 +288,12 @@ namespace Mat
 	template<unsigned int height, unsigned int width, typename T>
 	Matrix<height, width, T> operator-(const Matrix<height, width, T> &left, const Matrix<height, width, T> &right)
 	{
-		Matrix<height, width, T> ret;
+		Matrix<height, width, T> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
 			for (unsigned int j = 0; j < width; j++)
 			{
-				ret[i][j] = left[i][j] - right[i][j];
+				ret[i][j] -= right[i][j];
 			}
 		}
 		return ret;
@@ -301,10 +302,10 @@ namespace Mat
 	template<unsigned int height, typename T>
 	Vector<height, T> operator-(const Vector<height, T> &left, const Vector<height, T> &right)
 	{
-		Vector<height, T> ret;
+		Vector<height, T> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
-			ret[i] = left[i] - right[i];
+			ret[i] -= right[i];
 		}
 		return ret;
 	}
@@ -349,11 +350,36 @@ namespace Mat
 	template<unsigned int height, typename T>
 	Vector<height, T> operator*(const Vector<height, T> &left, const Vector<height, T> &right)
 	{
-		Vector<height, T> ret;
+		Vector<height, T> ret(left);
 
 		for (unsigned int row = 0; row < height; row++)
 		{
-			ret[row] = left[row] * right[row];
+			ret[row] *= right[row];
+		}
+		return ret;
+	}
+
+	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
+	Matrix<height, width, TMat> operator*(const Matrix<height, width, TMat> &left, TNum num)
+	{
+		Matrix<height, width, TMat> ret(left);
+		for (unsigned int i = 0; i < height; i++)
+		{
+			for (unsigned int j = 0; j < width; j++)
+			{
+				ret[i][j] *= num;
+			}
+		}
+		return ret;
+	}
+
+	template<unsigned int height, typename TMat, typename TNum>
+	Vector<height, TMat> operator*(const Vector<height, TMat> &left, TNum num)
+	{
+		Vector<height, TMat> ret(left);
+		for (unsigned int i = 0; i < height; i++)
+		{
+			ret[i] *= num;
 		}
 		return ret;
 	}
@@ -370,42 +396,17 @@ namespace Mat
 		return vec * num;
 	}
 
-	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
-	Matrix<height, width, TMat> operator*(const Matrix<height, width, TMat> &left, TNum num)
-	{
-		Matrix<height, width, TMat> ret;
-		for (unsigned int i = 0; i < height; i++)
-		{
-			for (unsigned int j = 0; j < width; j++)
-			{
-				ret[i][j] = left[i][j] * num;
-			}
-		}
-		return ret;
-	}
-
-	template<unsigned int height, typename TMat, typename TNum>
-	Vector<height, TMat> operator*(const Vector<height, TMat> &left, TNum num)
-	{
-		Vector<height, TMat> ret;
-		for (unsigned int i = 0; i < height; i++)
-		{
-			ret[i] = left[i] * num;
-		}
-		return ret;
-	}
-
 
 
 	template<unsigned int height, unsigned int width, typename TMat, typename TNum>
 	Matrix<height, width, TMat> operator/(const Matrix<height, width, TMat> &left, TNum num)
 	{
-		Matrix<height, width, TMat> ret;
+		Matrix<height, width, TMat> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
 			for (unsigned int j = 0; j < width; j++)
 			{
-				ret[i][j] = left[i][j] / num;
+				ret[i][j] /= num;
 			}
 		}
 		return ret;
@@ -414,10 +415,10 @@ namespace Mat
 	template<unsigned int height, typename TMat, typename TNum>
 	Vector<height, TMat> operator/(const Vector<height, TMat> &left, TNum num)
 	{
-		Vector<height, TMat> ret;
+		Vector<height, TMat> ret(left);
 		for (unsigned int i = 0; i < height; i++)
 		{
-			ret[i] = left[i] / num;
+			ret[i] /= num;
 		}
 		return ret;
 	}
@@ -487,7 +488,7 @@ namespace Mat
 
 
     //Non-member Matrix functions
-    	template<unsigned int length>
+    template<unsigned int length>
 	float magnitude(const Vector<length> &vec)
 	{
 		float mag = 0;

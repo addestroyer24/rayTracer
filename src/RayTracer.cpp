@@ -129,9 +129,11 @@ int main(int argc, char ** argv)
 
 	scene.finalizeScene();
 
-	const int progressBarSize = 40;
+	const int PROGRESS_BAR_SIZE = 40;
 	int progressPercent = 0;
 	int lastProgressPercent = -1;
+	int progressBarFill = 0;
+	int lastProgressBarFill = 0;
 
 	float maxComponent = 1;
 
@@ -151,16 +153,20 @@ int main(int argc, char ** argv)
 
 			colorBuffer.at(x,RES - 1 - y) = c;
 
-			progressPercent = (y * RES + x + 1) * progressBarSize / (RES * RES);
-			if (progressPercent != lastProgressPercent)
+			int pixelsRendered = (y * RES + x + 1);
+
+			progressPercent = pixelsRendered * 100 / (RES * RES);
+			progressBarFill = pixelsRendered * PROGRESS_BAR_SIZE / (RES * RES);
+
+			if (progressPercent != lastProgressPercent || progressBarFill != lastProgressBarFill)
 			{
 				lastProgressPercent = progressPercent;
 				std::cout << "\r[";
-				for (int i = 0; i < progressBarSize; i++)
+				for (int i = 0; i < PROGRESS_BAR_SIZE; i++)
 				{
-					std::cout << (i < progressPercent ? "#" : " ");
+					std::cout << (i < progressBarFill ? "#" : " ");
 				}
-				std::cout << "]" << std::flush;
+				std::cout << "]  " << progressPercent << "%" << std::flush;
 			}
 		}
 	}
