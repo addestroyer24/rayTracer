@@ -40,14 +40,14 @@ public:
 
 Scene::~Scene()
 {
-    for (auto iter = lights.begin(); iter != lights.end(); iter++)
+    for (auto *light : this->lights)
     {
-        delete *iter;
+        delete light;
     }
 
-    for (auto iter = materials.begin(); iter != materials.end(); iter++)
+    for (auto pair : this->materials)
     {
-        delete iter->second;
+        delete pair.second;
     }
 
     delete sceneTree;

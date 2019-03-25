@@ -206,11 +206,11 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 
 	const Material* surfaceMat = scene.getMaterial(surfaceInfo.materialID);
 
-	for (auto light = scene.getLights().begin(); light < scene.getLights().end(); light++)
+	for (auto* light : scene.getLights())
 	{
-		const Material* lightMat = scene.getMaterial((*light)->getMaterialName());
+		const Material* lightMat = scene.getMaterial(light->getMaterialName());
 
-		Vec3 lightDir = (*light)->getPosition() - surfaceInfo.intersectionPoint;
+		Vec3 lightDir = light->getPosition() - surfaceInfo.intersectionPoint;
 		float lightDistance = Mat::magnitude(lightDir);
 		lightDir = Mat::normalize(lightDir);
 

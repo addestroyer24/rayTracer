@@ -77,10 +77,8 @@ BVHTree::BVHTree(std::vector<Surface*>& surfaces)
 
     std::vector<Surface*> left, right;
 
-    for (auto iter = surfaces.begin(); iter < surfaces.end(); iter++)
+    for (auto *surf : surfaces)
     {
-        Surface* surf = *iter;
-
         if (surf->getCentroid()[maxDim] < splitPoint)
         {
             left.push_back(surf);
@@ -108,9 +106,9 @@ BVHTree::BVHTree(std::vector<Surface*>& surfaces)
 
 BVHTree::~BVHTree()
 {
-    for (auto iter = this->subSurfaces.cbegin(); iter < this->subSurfaces.cend(); iter++)
+    for (auto *surf : this->subSurfaces)
     {
-        delete *iter;
+        delete surf;
     }
 }
 
@@ -138,9 +136,9 @@ bool BVHTree::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &
 
     record.intersectionTime = endTime;
 
-    for (auto iter = this->subSurfaces.begin(); iter != this->subSurfaces.end(); iter++)
+    for (auto *surf : this->subSurfaces)
     {
-        if ((*iter)->hit(ray, startTime, endTime, newInfo))
+        if (surf->hit(ray, startTime, endTime, newInfo))
         {
             record = newInfo;
             endTime = record.intersectionTime;
