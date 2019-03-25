@@ -23,13 +23,15 @@ bool BoundingBox::hit(Ray ray, float startTime, float endTime, rayIntersectionIn
 	float entrance = startTime;
 	float exit = endTime;
 	Vec3 normal = Vec3(0);
+	Vec3 dir = ray.getDirection();
+	Vec3 org = ray.positionAtTime(0);
 	
 	for(int i=0; i<3; i++)
 	{
 		float slabA = this->min[i];
 		float slabB = this->max[i];
-		float invDir = 1.0f / ray.getDirection()[i];
-		float origin = ray.positionAtTime(0)[i];
+		float invDir = 1.0f / dir[i];
+		float origin = org[i];
 		
 		float closestHit = (slabA - origin) * invDir;
 		float farthestHit = (slabB - origin) * invDir;

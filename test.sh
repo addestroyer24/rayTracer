@@ -10,7 +10,10 @@ do
 	if [[ $arg == "-s" ]] ;
 	then
 		SHOW=1
-	else
+	elif [[ $arg == -j* ]] ;
+	then
+		THREADS=$arg
+	else 
 		BUILD_LIST[$I]=$arg
 		I=$I+1
 	fi
@@ -24,7 +27,7 @@ fi
 for file in ${BUILD_LIST[@]} ;
 do
 	echo -e "\nRendering $file..."
-	./tracer scenes/$file.obj $file.png
+	./tracer scenes/$file.obj $file.png $THREADS
 	if [[ $SHOW == 1 && $? == 0 ]] ; 
 	then
 		eog $file.png &

@@ -26,6 +26,8 @@
 #include <iostream>
 #include <limits>
 #include <math.h> //Math functions and some constants
+#include <mutex>
+#include <thread>
 #include <vector>
 
 
@@ -54,8 +56,19 @@ int main(int argc, char ** argv)
 	//Need at least two arguments (obj input and png output)
 	if(argc < 3)
 	{
-		printf("Usage: %s input.obj output.png\n", argv[0]);
+		printf("Usage: %s input.obj output.png [-jn]\n", argv[0]);
 		exit(1);
+	}
+
+	unsigned int numThreads = 1;
+
+	if (argc == 4)
+	{
+		if (std::string(argv[3]).find("-j") == 0)
+		{
+			numThreads = std::stoi(std::string(argv[3]).substr(2));
+			numThreads = std::min(std::thread::hardware_concurrency(), std::max(1U, numThreads));
+		}
 	}
 
 	Buffer<Vec3> colorBuffer(RES, RES);
@@ -130,57 +143,117 @@ int main(int argc, char ** argv)
 	scene.finalizeScene();
 
 	const int PROGRESS_BAR_SIZE = 40;
-	int progressPercent = 0;
 	int lastProgressPercent = -1;
-	int progressBarFill = 0;
 	int lastProgressBarFill = 0;
+
+	int pixelsRendered = 0;
 
 	float maxComponent = 1;
 
-	for(int y=0; y<RES; y++)
-	{
-		for(int x=0; x<RES; x++)
+	std::mutex compMutex;
+	std::mutex progressMutex;
+	//std::mutex ioMutex;
+
+	auto renderFunc = [&](int offset){
+		float localMaxComponent = 1;
+		int localPixelsRendered = 0;
+
+		for (int y = 0; y < RES; y++)
 		{
-			Ray r = generator.getRay(x, y);
-
-			Vec3 c = traceRay(scene, r);
-
-			for (int i = 0; i < 3; i++)
+			for (int x = offset; x<RES; x += numThreads)
 			{
-				if (c[i] > maxComponent)
-					maxComponent = c[i];
-			}
+				Ray r = generator.getRay(x, y);
 
-			colorBuffer.at(x,RES - 1 - y) = c;
+				Vec3 c = traceRay(scene, r);
 
-			int pixelsRendered = (y * RES + x + 1);
-
-			progressPercent = pixelsRendered * 100 / (RES * RES);
-			progressBarFill = pixelsRendered * PROGRESS_BAR_SIZE / (RES * RES);
-
-			if (progressPercent != lastProgressPercent || progressBarFill != lastProgressBarFill)
-			{
-				lastProgressPercent = progressPercent;
-				std::cout << "\r[";
-				for (int i = 0; i < PROGRESS_BAR_SIZE; i++)
+				for (int i = 0; i < 3; i++)
 				{
-					std::cout << (i < progressBarFill ? "#" : " ");
+					if (c[i] > localMaxComponent)
+						localMaxComponent = c[i];
 				}
-				std::cout << "]  " << progressPercent << "%" << std::flush;
+
+				colorBuffer.at(x,RES - 1 - y) = c;
+
+				if (localPixelsRendered > RES * RES / 500 && (numThreads == 1 || progressMutex.try_lock()))
+				{
+					pixelsRendered += localPixelsRendered + 1;
+					localPixelsRendered = 0;
+
+					int progressPercent = pixelsRendered * 100 / (RES * RES);
+					int progressBarFill = pixelsRendered * PROGRESS_BAR_SIZE / (RES * RES);
+
+					if (progressPercent != lastProgressPercent || progressBarFill != lastProgressBarFill)
+					{
+						lastProgressPercent = progressPercent;
+						std::cout << "\r[";
+						for (int i = 0; i < PROGRESS_BAR_SIZE; i++)
+						{
+							std::cout << (i < progressBarFill ? "#" : " ");
+						}
+						std::cout << "]  " << progressPercent << "%" << std::flush;
+					}
+					if (numThreads != 1) progressMutex.unlock();
+				}
+				else
+				{
+					localPixelsRendered++;
+				}
 			}
 		}
+
+		{
+			std::lock_guard<std::mutex> lk(compMutex);
+			maxComponent = std::max(maxComponent, localMaxComponent);
+		}
+	};
+
+	std::vector<std::thread> threads;
+
+	for (int i = 1; i < numThreads; i++)
+	{
+		threads.emplace_back(renderFunc, i);
 	}
-	std::cout << std::endl;
+
+	renderFunc(0);
+
+	for (auto &thread : threads)
+	{
+		thread.join();
+	}
+
+	threads.clear();
+
+	std::cout << "\r[";
+	for (int i = 0; i < PROGRESS_BAR_SIZE; i++)
+	{
+		std::cout << "#";
+	}
+	std::cout << "]  " << "100%" << std::endl;
 
 	//create a frame buffer for RESxRES
     Buffer<Color> outputBuffer(RES, RES);
 
-	for(int y=0; y<RES; y++)
+	auto convertFunc = [&outputBuffer, &colorBuffer, maxComponent, numThreads](int offset)
 	{
-		for(int x=0; x<RES; x++)
+		for (int y = 0; y < RES; y++)
 		{
-			outputBuffer.at(x, y) = (Color)(colorBuffer.at(x, y) * 255 / maxComponent);
+			for (int x = offset; x < RES; x += numThreads)
+			{
+				outputBuffer.at(x, y) = (Color)(colorBuffer.at(x, y) * 255 / maxComponent);
+			}
 		}
+	};
+
+	for (int i = 1; i < numThreads; i++)
+	{
+		threads.emplace_back(convertFunc, i);
+	}
+
+	convertFunc(0);
+
+	for (auto &thread : threads)
+	{
+		thread.join();
 	}
 
 	//Write output buffer to file argv2

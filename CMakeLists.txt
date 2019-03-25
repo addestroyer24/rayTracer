@@ -8,6 +8,8 @@ endif()
 
 set (CMAKE_CXX_STANDARD 11)
 
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+
 set(EXECUTABLE_NAME "tracer")
 project(${EXECUTABLE_NAME})
 
