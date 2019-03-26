@@ -146,13 +146,20 @@ int main(int argc, char ** argv)
 	int lastProgressPercent = -1;
 	int lastProgressBarFill = 0;
 
-	int pixelsRendered = 0;
+	long pixelsRendered = 0;
 
 	float maxComponent = 1;
 
 	std::mutex compMutex;
 	std::mutex progressMutex;
 	//std::mutex ioMutex;
+
+	std::cout << "\r[";
+	for (int i = 0; i < PROGRESS_BAR_SIZE; i++)
+	{
+		std::cout << " ";
+	}
+	std::cout << "]  " << "0%" << std::flush;
 
 	auto renderFunc = [&](int offset){
 		float localMaxComponent = 1;
