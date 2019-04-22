@@ -3,77 +3,129 @@
 
 #include "BoundingBox.h"
 #include "Ray.h"
-#include "rayIntersectionInfo.h"
+#include "rayHit.h"
 #include "Surface.h"
 
 #include "libs/Matrix.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <iostream>
+#include <string.h>
 #include <utility>
 #include <vector>
 
-class BVHTree : public Surface
+struct alignas(32) BVHNode
+{
+    float boundingBox[6];
+    union{
+        struct{
+            char isInnerNode;
+            int childrenOffset;
+        };
+        Surface* surf;
+    };
+};
+
+static_assert(offsetof(BVHNode, surf) == offsetof(BVHNode, isInnerNode), "Byte alignment in BVHNode is off, might need to adjust for endianness!");
+
+class BVHTree
 {
 private:
-    Vec3 min;
-    Vec3 max;
-    Vec3 centroid;
-
-    std::vector<Surface*> subSurfaces;
+    unsigned int nextFreeNode;
+    unsigned int allocatedSize;
+    BVHNode *nodes;
 
 public:
     BVHTree(std::vector<Surface*>&);
-    virtual ~BVHTree();
+    ~BVHTree();
 
-    bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
+    bool hit(Ray ray, float startTime, float endTime, rayHit &record);
+    void hit(rayBundle rays, float startTime, float endTime, hitBundle &records);
 
-    virtual Vec3 getCentroid();
-    virtual BoundingBox getBoundingBox();
+private:
+    void build(std::vector<Surface*> &surfaces, int nodeIndex);
+    bool hitNodeList(Ray ray, float startTime, float endTime, rayHit &record, int nodeOfInterest);
+    void hitNodeList(rayBundle rays, float startTime, float endTime, hitBundle &records, int nodeOfInterest);
 };
 
-BVHTree::BVHTree(std::vector<Surface*>& surfaces)
-    : Surface(""), min(0), max(0), centroid(0)
+BVHTree::BVHTree(std::vector<Surface*> &surfaces)
 {
-    this->min = surfaces[0]->getBoundingBox().min;
-    this->max = surfaces[0]->getBoundingBox().max;
+    //try{
+    this->nodes = new BVHNode[surfaces.size() * 4];
+    this->allocatedSize = surfaces.size() * 4;
+    // }
+    // catch (std::bad_alloc e){
+    //     std::cerr << e.what() << std::endl;
+    //     exit(1);
+    // }
+    this->nextFreeNode = 1;
 
-    this->centroid = surfaces[0]->getCentroid();
+    this->build(surfaces, 0);
+}
+
+BVHTree::~BVHTree()
+{
+    for (int i = 0; i < this->nextFreeNode; i++)
+    {
+        if (this->nodes[i].isInnerNode != true)
+            delete this->nodes[i].surf;
+    }
+
+    delete[] this->nodes;
+}
+
+bool BVHTree::hit(Ray ray, float startTime, float endTime, rayHit &record)
+{
+    return this->hitNodeList(ray, startTime, endTime, record, 0);
+}
+
+void BVHTree::hit(rayBundle rays, float startTime, float endTime, hitBundle &records)
+{
+    this->hitNodeList(rays, startTime, endTime, records, 0);
+}
+
+void BVHTree::build(std::vector<Surface*> &surfaces, int nodeIndex)
+{
+    BVHNode &thisNode = this->nodes[nodeIndex];
+    memcpy(thisNode.boundingBox, surfaces[0]->getBoundingBox().minMax, sizeof(float) * 6);
+
+    Vec3 centroid = surfaces[0]->getCentroid();
 
     for (int i = 1; i < surfaces.size(); i++)
     {
         BoundingBox bounds = surfaces[i]->getBoundingBox();
         for (int j = 0; j < 3; j++)
         {
-            this->min[j] = std::min(this->min[j], bounds.min[j]);
-            this->max[j] = std::max(this->max[j], bounds.max[j]);
+            thisNode.boundingBox[j] = std::min(thisNode.boundingBox[j], bounds.minMax[j]);
+            thisNode.boundingBox[j+3] = std::max(thisNode.boundingBox[j+3], bounds.minMax[j+3]);
         }
 
-        this->centroid += surfaces[i]->getCentroid();
+        centroid += surfaces[i]->getCentroid();
     }
 
     if (surfaces.size() == 1)
     {
-        this->subSurfaces.push_back(surfaces[0]);
+        thisNode.surf = surfaces[0];
         return;
     }
 
-    this->centroid = this->centroid / surfaces.size();
+    centroid = centroid / surfaces.size();
 
     float maxDimWidth = 0;
     int maxDim;
     
     for (int i = 0; i < 3; i++)
     {
-        if (this->max[i] - this->min[i] > maxDimWidth)
+        if (thisNode.boundingBox[i+3] - thisNode.boundingBox[i] > maxDimWidth)
         {
-            maxDimWidth = this->max[i] - this->min[i];
+            maxDimWidth = thisNode.boundingBox[i+3] - thisNode.boundingBox[i];
             maxDim = i;
         }
     }
 
-    float splitPoint = (this->max[maxDim] + this->min[maxDim]) / 2;
-    splitPoint = this->centroid[maxDim];
+    float splitPoint = (thisNode.boundingBox[maxDim+3] + thisNode.boundingBox[maxDim]) / 2;
+    splitPoint = centroid[maxDim];
 
     std::vector<Surface*> left, right;
 
@@ -100,27 +152,29 @@ BVHTree::BVHTree(std::vector<Surface*>& surfaces)
         left.pop_back();
     }
 
-    this->subSurfaces.push_back(new BVHTree(left));
-    this->subSurfaces.push_back(new BVHTree(right));
-}
+    int claimedNodesIndex = this->nextFreeNode;
+    this->nextFreeNode += 2;
 
-BVHTree::~BVHTree()
-{
-    for (auto *surf : this->subSurfaces)
+    thisNode.isInnerNode = true;
+    thisNode.childrenOffset = claimedNodesIndex;
+
+    if (this->nextFreeNode > this->allocatedSize)
     {
-        delete surf;
+        throw new std::length_error("Too many things to fit in BVHTree!");
     }
+
+    this->build(left, claimedNodesIndex);
+    this->build(right, claimedNodesIndex + 1);
 }
 
-bool BVHTree::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
+bool BVHTree::hitNodeList(Ray ray, float startTime, float endTime, rayHit &record, int nodeOfInterest)
 {
-    if (this->subSurfaces.size() == 0)
-        return false;
+    BVHNode &thisNode = this->nodes[nodeOfInterest];
 
     bool hitSurface = false;
-    rayIntersectionInfo newInfo;
+    rayHit newInfo;
 
-    hitSurface = BoundingBox(this->min, this->max).hit(ray, startTime, endTime, newInfo);
+    hitSurface = BoundingBox::hit(thisNode.boundingBox, ray, startTime, endTime, newInfo);
 
     if (!hitSurface)
         return false;
@@ -128,7 +182,7 @@ bool BVHTree::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &
     hitSurface = false;
 	
     // toggle the boolean to determine whether to draw leaf bounding boxes instead of primitives
-    if (this->subSurfaces.size() == 1 && false)
+    if (!thisNode.isInnerNode == true && false)
     {
         record = newInfo;
         return true;
@@ -136,26 +190,73 @@ bool BVHTree::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &
 
     record.intersectionTime = endTime;
 
-    for (auto *surf : this->subSurfaces)
+    if (thisNode.isInnerNode == true)
     {
-        if (surf->hit(ray, startTime, endTime, newInfo))
+        if (this->hitNodeList(ray, startTime, endTime, newInfo, thisNode.childrenOffset))
+        {
+            record = newInfo;
+            endTime = record.intersectionTime;
+            hitSurface = true;
+        }
+
+        if (this->hitNodeList(ray, startTime, endTime, newInfo, thisNode.childrenOffset + 1))
         {
             record = newInfo;
             endTime = record.intersectionTime;
             hitSurface = true;
         }
     }
+    else
+    {
+        if (thisNode.surf->hit(ray, startTime, endTime, newInfo))
+        {
+            record = newInfo;
+            endTime = record.intersectionTime;
+            hitSurface = true;
+        }
+    }
+    
     return hitSurface;
 }
 
-Vec3 BVHTree::getCentroid()
+void BVHTree::hitNodeList(rayBundle rays, float startTime, float endTime, hitBundle &records, int nodeOfInterest)
 {
-    return this->centroid;
-}
+    BVHNode &thisNode = this->nodes[nodeOfInterest];
 
-BoundingBox BVHTree::getBoundingBox()
-{
-    return BoundingBox(this->min, this->max);
+    bool hitSurface = false;
+
+    for (int i = 0; i < 4; i++)
+    {
+        rayHit newInfo;
+
+        if (!BoundingBox::hit(thisNode.boundingBox, rays[i], startTime, endTime, newInfo))
+            continue;
+
+        hitSurface = true;
+        
+        // toggle the boolean to determine whether to draw leaf bounding boxes instead of primitives
+        if (!thisNode.isInnerNode == true && false)
+        {
+            records[i] = newInfo;
+            continue;
+        }
+    }
+
+    if (!hitSurface)
+        return;
+
+    if (thisNode.isInnerNode == true)
+    {
+        this->hitNodeList(rays, startTime, endTime, records, thisNode.childrenOffset);
+        this->hitNodeList(rays, startTime, endTime, records, thisNode.childrenOffset + 1);
+    }
+    else
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            thisNode.surf->hit(rays[i], startTime, endTime, records[i]);
+        }
+    }
 }
 
 #endif

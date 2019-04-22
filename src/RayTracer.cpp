@@ -2,12 +2,20 @@
 // generator creates the test images. My ray dirs are normalized.
 
 //Hard code resolution for now
-#define RES 1000
+#define SQUARE_RES true
+
+#if SQUARE_RES
+#define RESX 5000
+#define RESY 5000
+#else
+#define RESX 1920
+#define RESY 1080
+#endif
 
 #define REFLECTION_DEPTH_LIMIT 8
+#define BUNDLE_RENDER
 
 #include "Camera.h"
-//#include "CompositeSurface.h"
 #include "Light.h"
 #include "Material.h"
 #include "Ray.h"
@@ -23,6 +31,9 @@
 #include "libs/simplePNG.h"
 
 #define _USE_MATH_DEFINES //This enables math constants in Windows
+
+#include <chrono>
+#include <cstddef>
 #include <iostream>
 #include <limits>
 #include <math.h> //Math functions and some constants
@@ -50,9 +61,25 @@ Material* objMaterialtoMaterial(obj_material* mat)
 
 
 Vec3 traceRay(Scene& scene, Ray r, int currentDepth = 0);
+void traceRayBundle(Scene& scene, rayBundle r, Vec3Bundle &vecBundle, int currentDepth = 0);
 
 int main(int argc, char ** argv)
 {
+	// std::vector<Surface*> testVec;
+	// testVec.push_back(new Triangle(Vec3(0), Vec3(), Vec3(), ""));
+	// BVHTree tree(testVec);
+	BVHNode tree;
+	std::cout << "BVHNode size:\t\t" << sizeof(tree) << std::endl;
+	std::cout << "subsurfaces offset:\t" << offsetof(BVHNode, surf) << std::endl;
+	std::cout << "inner bool offset:\t" << offsetof(BVHNode, isInnerNode) << std::endl;
+	std::cout << "boundingBox offset:\t" << offsetof(BVHNode, boundingBox) << std::endl;
+
+	std::cout << "BVHNode alignment:\t" << alignof(tree) << std::endl;
+	// std::cout << "subsurfaces alignment:\t" << alignof(tree.surf) << std::endl;
+	// std::cout << "boundingBox alignment:\t" << alignof(tree.boundingBox) << std::endl;
+
+	//exit(0);
+
 	//Need at least two arguments (obj input and png output)
 	if(argc < 3)
 	{
@@ -71,7 +98,7 @@ int main(int argc, char ** argv)
 		}
 	}
 
-	Buffer<Vec3> colorBuffer(RES, RES);
+	Buffer<Vec3> colorBuffer(RESX, RESY);
 
 	//load obj from file argv1
     objLoader objData = objLoader();
@@ -94,7 +121,7 @@ int main(int argc, char ** argv)
 
     Camera camera = Camera::lookAt(position, focus, up, Mat::toRads(90));
 
-	RayGenerator generator = RayGenerator(camera, RES, RES);
+	RayGenerator generator = RayGenerator(camera, RESX, RESY);
 
 	Scene scene;
 	std::vector<Light> lights;
@@ -142,6 +169,8 @@ int main(int argc, char ** argv)
 
 	scene.finalizeScene();
 
+	auto startTime = std::chrono::system_clock::now();
+
 	const int PROGRESS_BAR_SIZE = 40;
 	int lastProgressPercent = -1;
 	int lastProgressBarFill = 0;
@@ -164,10 +193,10 @@ int main(int argc, char ** argv)
 	auto renderFunc = [&](int offset){
 		float localMaxComponent = 1;
 		int localPixelsRendered = 0;
-
-		for (int y = 0; y < RES; y++)
+#ifndef BUNDLE_RENDER
+		for (int y = 0; y < RESY; y++)
 		{
-			for (int x = offset; x<RES; x += numThreads)
+			for (int x = offset; x<RESX; x += numThreads)
 			{
 				Ray r = generator.getRay(x, y);
 
@@ -179,15 +208,41 @@ int main(int argc, char ** argv)
 						localMaxComponent = c[i];
 				}
 
-				colorBuffer.at(x,RES - 1 - y) = c;
+				colorBuffer.at(x, RESY - 1 - y) = c;
 
-				if (localPixelsRendered > RES * RES / 500 && (numThreads == 1 || progressMutex.try_lock()))
+				if (localPixelsRendered > RESX * RESY / 500 && (numThreads == 1 || progressMutex.try_lock()))
 				{
 					pixelsRendered += localPixelsRendered + 1;
+#else
+		for (int y = offset * 2; y < RESY; y += 2*numThreads)
+		{
+			for (int x = 0; x<RESX; x += 2)
+			{
+				rayBundle rayBundle;
+				generator.getRayBundle(x, y, rayBundle);
+
+				Vec3Bundle vecBundle;
+				traceRayBundle(scene, rayBundle, vecBundle);
+
+				for (int i = 0; i < 3; i++)
+				{
+					for (int j = 0; j < 4; j++)
+					{
+						colorBuffer.at(x + (j%2), RESY - 1 - y - (j/2))[i] = vecBundle[j][i];
+
+						if (vecBundle[j][i] > localMaxComponent)
+							localMaxComponent = vecBundle[j][i];
+					}
+				}
+
+				if (localPixelsRendered > RESX * RESY / 500 && (numThreads == 1 || progressMutex.try_lock()))
+				{
+					pixelsRendered += localPixelsRendered + 4;
+#endif
 					localPixelsRendered = 0;
 
-					int progressPercent = pixelsRendered * 100 / (RES * RES);
-					int progressBarFill = pixelsRendered * PROGRESS_BAR_SIZE / (RES * RES);
+					int progressPercent = pixelsRendered * 100 / (RESX * RESY);
+					int progressBarFill = pixelsRendered * PROGRESS_BAR_SIZE / (RESX * RESY);
 
 					if (progressPercent != lastProgressPercent || progressBarFill != lastProgressBarFill)
 					{
@@ -203,7 +258,11 @@ int main(int argc, char ** argv)
 				}
 				else
 				{
+#ifndef BUNDLE_RENDER
 					localPixelsRendered++;
+#else
+					localPixelsRendered += 4;
+#endif
 				}
 			}
 		}
@@ -237,16 +296,18 @@ int main(int argc, char ** argv)
 	}
 	std::cout << "]  " << "100%" << std::endl;
 
+	std::cout << std::chrono::duration<double>(std::chrono::system_clock::now() - startTime).count() << std::endl;
+
 	//create a frame buffer for RESxRES
-    Buffer<Color> outputBuffer(RES, RES);
+    Buffer<Color> outputBuffer(RESX, RESY);
 
 	auto convertFunc = [&outputBuffer, &colorBuffer, maxComponent, numThreads](int offset)
 	{
-		for (int y = 0; y < RES; y++)
+		for (int y = 0; y < RESY; y++)
 		{
-			for (int x = offset; x < RES; x += numThreads)
+			for (int x = offset; x < RESX; x += numThreads)
 			{
-				outputBuffer.at(x, y) = (Color)(colorBuffer.at(x, y) * 255 / maxComponent);
+				outputBuffer.at(x, y) = static_cast<Color>(colorBuffer.at(x, y) * 255 / maxComponent);
 			}
 		}
 	};
@@ -272,13 +333,10 @@ int main(int argc, char ** argv)
 
 Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 {
-	bool hitSurface = false;
-	rayIntersectionInfo surfaceInfo;
+	rayHit surfaceInfo;
 	Vec3 returnColor(0);
-
-	hitSurface = scene.hitSurface(r, 0, 1000000, surfaceInfo);
 	
-	if (!hitSurface)
+	if (!scene.hitSurface(r, 0, 1000000, surfaceInfo))
 		return returnColor;
 	
 	if (surfaceInfo.materialID == "")
@@ -317,7 +375,7 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 		}
 
 		Ray shadowRay(surfaceInfo.intersectionPoint + surfaceInfo.surfaceNormal * 0.0001f, lightDir);
-		rayIntersectionInfo unneeded;
+		rayHit unneeded;
 
 		if (scene.hitSurface(shadowRay, 0, lightDistance, unneeded))
 		{
@@ -347,4 +405,93 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 	}
 
 	return returnColor;
+}
+
+void traceRayBundle(Scene& scene, rayBundle rays, Vec3Bundle &vecBundle, int currentDepth)
+{
+	const float DEFAULT_END_TIME = 1000000;
+
+	hitBundle records;
+
+	for (int i = 0; i < 4; i++) records[i].intersectionTime = DEFAULT_END_TIME;
+
+	scene.hitSurface(rays, 0, DEFAULT_END_TIME, records);
+
+	for (int i = 0; i < 4; i++)
+	{
+		Vec3 returnColor(0);
+
+		if (records[i].intersectionTime == DEFAULT_END_TIME)
+		{
+			vecBundle[i] = returnColor;
+			continue;
+		}
+
+		if (records[i].materialID == "")
+			vecBundle[i] = records[i].surfaceNormal / 2 + 0.5;
+
+		const Material* surfaceMat = scene.getMaterial(records[i].materialID);
+
+		for (auto* light : scene.getLights())
+		{
+			const Material* lightMat = scene.getMaterial(light->getMaterialName());
+
+			Vec3 lightDir = light->getPosition() - records[i].intersectionPoint;
+			float lightDistance = Mat::magnitude(lightDir);
+			lightDir = Mat::normalize(lightDir);
+
+			//std::cout << (*light).getPosition().toString() << std::endl; 
+
+			// diffuse lighting
+			float lDotn = Mat::dot(lightDir, records[i].surfaceNormal);
+
+			// specular lighting
+			float spec = 0;
+
+			if (lDotn > 0)
+			{
+				Vec3 reflectedLight = Mat::normalize(Mat::reflectOut(lightDir, records[i].surfaceNormal));
+				Vec3 view = Mat::normalize(-rays[i].getDirection());
+				// Vec3 view = Mat::normalize(scene.getCamera().getPosition() - surfaceInfo.intersectionPoint);
+
+				if (Mat::dot(reflectedLight, view) > 0 && surfaceMat->shiny != 0)
+					spec = pow(Mat::dot(reflectedLight, view), surfaceMat->shiny);
+			}
+			else
+			{
+				lDotn = 0;
+			}
+
+			Ray shadowRay(records[i].intersectionPoint + records[i].surfaceNormal * 0.0001f, lightDir);
+			rayHit unneeded;
+
+			if (scene.hitSurface(shadowRay, 0, lightDistance, unneeded))
+			{
+				lDotn = 0;
+				spec = 0;
+			}
+
+			Vec3 surfaceColor(0);
+
+			surfaceColor += surfaceMat->amb * lightMat->amb;
+
+			surfaceColor += surfaceMat->diff * lightMat->diff * lDotn;
+
+			surfaceColor += surfaceMat->spec * surfaceMat->spec * spec;
+
+			returnColor += surfaceColor;
+		}
+
+		if (surfaceMat->reflect > 0 && currentDepth <= REFLECTION_DEPTH_LIMIT)
+		{
+			Ray reflectedRay(records[i].intersectionPoint + records[i].surfaceNormal * 0.0001f, 
+				Mat::reflectIn(rays[i].getDirection(), records[i].surfaceNormal));
+
+			Vec3 reflectColor = traceRay(scene, reflectedRay, currentDepth + 1);
+
+			returnColor = returnColor * (1 - surfaceMat->reflect) + reflectColor * surfaceMat->reflect;
+		}
+
+		vecBundle[i] = returnColor;
+	}
 }

@@ -21,7 +21,7 @@ private:
 public:
     Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID);
 
-    virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
+    virtual bool hit(Ray ray, float startTime, float endTime, rayHit &record);
 
     virtual Vec3 getCentroid();
     virtual BoundingBox getBoundingBox();
@@ -34,7 +34,7 @@ Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID)
     this->centroid = (a + b + c) / 3;
 }
 
-bool Triangle::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
+bool Triangle::hit(Ray ray, float startTime, float endTime, rayHit &record)
 {
     //check the denominator first to avoid division by 0
     if (Mat::dot(ray.getDirection(), this->normal) == 0)

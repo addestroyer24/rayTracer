@@ -8,10 +8,15 @@ endif()
 
 set (CMAKE_CXX_STANDARD 11)
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftree-vectorize -fopt-info-vec-optimized -msse2")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftree-vectorize -fopt-info-vec-optimized -msse2")
+#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 set(EXECUTABLE_NAME "tracer")
 project(${EXECUTABLE_NAME})
+
+find_package(Threads REQUIRED)
+set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 add_definitions ( -DEXEC_NAME="${EXECUTABLE_NAME}" )
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build)

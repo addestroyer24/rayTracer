@@ -22,11 +22,11 @@ private:
 public:
     static Camera lookAt(Vec3 position, Vec3 focus, Vec3 up, float fov);
 
-    Vec3 getu();
-    Vec3 getv();
-    Vec3 getw();
-    Vec3 getPosition();
-    float getFOV();
+    Vec3 getu() const;
+    Vec3 getv() const;
+    Vec3 getw() const;
+    Vec3 getPosition() const;
+    float getFOV() const;
 
 };
 
@@ -43,27 +43,27 @@ Camera Camera::lookAt(Vec3 position, Vec3 focus, Vec3 up, float fov)
     return Camera(position, focus - position, up, fov);
 }
 
-Vec3 Camera::getu()
+Vec3 Camera::getu() const
 {
     return this->u;
 }
 
-Vec3 Camera::getv()
+Vec3 Camera::getv() const
 {
     return this->v;
 }
 
-Vec3 Camera::getw()
+Vec3 Camera::getw() const
 {
     return this->w;
 }
 
-Vec3 Camera::getPosition()
+Vec3 Camera::getPosition() const
 {
     return this->position;
 }
 
-float Camera::getFOV()
+float Camera::getFOV() const
 {
     return this->fov;
 }

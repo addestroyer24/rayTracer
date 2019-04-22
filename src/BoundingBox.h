@@ -2,21 +2,39 @@
 #define _BOUNDING_BOX_H
 
 #include "Ray.h"
-#include "rayIntersectionInfo.h"
+#include "rayHit.h"
 
 class BoundingBox
 {
 public:
-    Vec3 min;
-    Vec3 max;
+    float minMax[6];
 
-    BoundingBox();
-    BoundingBox(Vec3 min, Vec3 max) : min(min), max(max) {}
+    BoundingBox() = default;
+    BoundingBox(Vec3 min, Vec3 max) 
+		//: min(min), max(max) 
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			minMax[i] = min[i];
+			minMax[i+3] = max[i];
+		}
+	}
+	BoundingBox(float vals[6])
+	{
+		for (int i = 0; i < 6; i++)
+		{
+			minMax[i] = vals[i];
+		}
+	}
 
-    bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &info, float *exitTime = nullptr);
+    bool hit(Ray ray, float startTime, float endTime, rayHit &info, float *exitTime = nullptr)
+	{
+		return hit(this->minMax, ray, startTime, endTime, info, exitTime);
+	}
+	static bool hit(float minMax[6], Ray ray, float startTime, float endTime, rayHit &info, float *exitTime = nullptr);
 };
 
-bool BoundingBox::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record, float *exitTime)
+bool BoundingBox::hit(float minMax[6], Ray ray, float startTime, float endTime, rayHit &record, float *exitTime)
 {
     //we want to find the farthest entrace and closest exit to the box
 	//if the exit is closer than the entrance, there is no hit
@@ -28,8 +46,8 @@ bool BoundingBox::hit(Ray ray, float startTime, float endTime, rayIntersectionIn
 	
 	for(int i=0; i<3; i++)
 	{
-		float slabA = this->min[i];
-		float slabB = this->max[i];
+		float slabA = minMax[i];
+		float slabB = minMax[i+3];
 		float invDir = 1.0f / dir[i];
 		float origin = org[i];
 		

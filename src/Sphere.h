@@ -4,7 +4,7 @@
 #include "BoundingBox.h"
 #include "Surface.h"
 
-#include "rayIntersectionInfo.h"
+#include "rayHit.h"
 
 #include "libs/Matrix.h"
 
@@ -24,7 +24,7 @@ private:
 public:
     Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID);
 
-    virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record);
+    virtual bool hit(Ray ray, float startTime, float endTime, rayHit &record);
 
     virtual Vec3 getCentroid();
     virtual BoundingBox getBoundingBox();
@@ -37,7 +37,7 @@ Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std
     this-> upNormal = Mat::normalize(upNormal);
 }
 
-bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record)
+bool Sphere::hit(Ray ray, float startTime, float endTime, rayHit &record)
 {
     Vec3 d = ray.getDirection();
     Vec3 e = ray.positionAtTime(0);
@@ -90,14 +90,18 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
     yDir = ray.getDirection()[1] < 0 ? -1 : 1;
     zDir = ray.getDirection()[2] < 0 ? -1 : 1;
 
-    while (time < (-dDotemc + discriminant) / dDotd)
+    int failsafe = 0;
+    float lastTime = 0;
+
+    rayHit voxelInfo;
+
+    while (time < (-dDotemc + discriminant) / dDotd && time != lastTime && failsafe < 128)
     {
         bool inside;
         float exitTime;
 
         for (int i = 0; i < 3; i++)
         {
-            hit = false;
             inside = true;
 
             Vec3 voxelPoint = centerVoxelPoint;
@@ -121,7 +125,7 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
 
             BoundingBox bb(voxelPoint, voxelPoint + VOXEL_SIZE);
             
-            if (bb.hit(ray, startTime, endTime, record, &exitTime))
+            if (bb.hit(ray, startTime, endTime, voxelInfo, &exitTime))
             {
                 hit = true;
                 centerVoxelPoint = voxelPoint;
@@ -130,17 +134,24 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &r
 
             if (inside && hit)
                 break;
+
+            
+            hit = false;
         }
 
         if (inside && hit)
             break;
 
+        lastTime = time;
         time = exitTime;
-        hit = false;
+
+        failsafe++;
     }
 
     if (!hit)
         return false;
+
+    record = voxelInfo;
     
     record.materialID = this->materialName;
     

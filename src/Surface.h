@@ -3,7 +3,7 @@
 
 #include "BoundingBox.h"
 #include "Ray.h"
-#include "rayIntersectionInfo.h"
+#include "rayHit.h"
 
 #include <string>
 
@@ -16,7 +16,7 @@ public:
     Surface(std::string materialID);
     virtual ~Surface() = default;
 
-    virtual bool hit(Ray ray, float startTime, float endTime, rayIntersectionInfo &record) = 0;
+    virtual bool hit(Ray ray, float startTime, float endTime, rayHit &record) = 0;
 
     virtual Vec3 getCentroid() = 0;
     virtual BoundingBox getBoundingBox() = 0;
