@@ -21,7 +21,7 @@ private:
 public:
     Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID);
 
-    virtual bool hit(Ray ray, float startTime, float endTime, rayHit &record);
+    virtual bool hit(Ray ray, float startTime, rayHit *record);
 
     virtual Vec3 getCentroid();
     virtual BoundingBox getBoundingBox();
@@ -34,8 +34,9 @@ Triangle::Triangle(Vec3 a, Vec3 b, Vec3 c, std::string materialID)
     this->centroid = (a + b + c) / 3;
 }
 
-bool Triangle::hit(Ray ray, float startTime, float endTime, rayHit &record)
+bool Triangle::hit(Ray ray, float startTime, rayHit *record)
 {
+    float endTime = record->intersectionTime;
     //check the denominator first to avoid division by 0
     if (Mat::dot(ray.getDirection(), this->normal) == 0)
         return false;
@@ -59,10 +60,10 @@ bool Triangle::hit(Ray ray, float startTime, float endTime, rayHit &record)
     if (!(startTime < t && t < endTime))
         return false;
 
-    record.intersectionTime = t;
-    record.intersectionPoint = x;
-    record.surfaceNormal = this->normal;
-    record.materialID = this->materialName;
+    record->intersectionTime = t;
+    record->intersectionPoint = x;
+    record->surfaceNormal = this->normal;
+    record->materialID = this->materialName;
 
     return true;
 

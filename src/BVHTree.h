@@ -1,6 +1,8 @@
 #ifndef _BVH_TREE_H
 #define _BVH_TREE_H
 
+// #define RENDER_LEAF_BBOX
+
 #include "BoundingBox.h"
 #include "Ray.h"
 #include "rayHit.h"
@@ -27,7 +29,8 @@ struct alignas(32) BVHNode
     };
 };
 
-static_assert(offsetof(BVHNode, surf) == offsetof(BVHNode, isInnerNode), "Byte alignment in BVHNode is off, might need to adjust for endianness!");
+// I don't think this actually works..
+// static_assert(offsetof(BVHNode, surf) == offsetof(BVHNode, isInnerNode), "Byte alignment in BVHNode is off, might need to adjust for endianness!");
 
 class BVHTree
 {
@@ -40,13 +43,13 @@ public:
     BVHTree(std::vector<Surface*>&);
     ~BVHTree();
 
-    bool hit(Ray ray, float startTime, float endTime, rayHit &record);
-    void hit(rayBundle rays, float startTime, float endTime, hitBundle &records);
+    bool hit(Ray ray, float startTime, float endTime, rayHit *record);
+    void hit(rayBundle rays, float startTime, float endTime, hitBundle *records);
 
 private:
     void build(std::vector<Surface*> &surfaces, int nodeIndex);
-    bool hitNodeList(Ray ray, float startTime, float endTime, rayHit &record, int nodeOfInterest);
-    void hitNodeList(rayBundle rays, float startTime, float endTime, hitBundle &records, int nodeOfInterest);
+    bool hitNodeList(Ray ray, float startTime, rayHit *record, int nodeOfInterest);
+    void hitNodeList(rayBundle rays, float startTime, hitBundle *records, int nodeOfInterest);
 };
 
 BVHTree::BVHTree(std::vector<Surface*> &surfaces)
@@ -68,21 +71,23 @@ BVHTree::~BVHTree()
 {
     for (int i = 0; i < this->nextFreeNode; i++)
     {
-        if (this->nodes[i].isInnerNode != true)
+        if (!(this->nodes[i].isInnerNode == 1))
             delete this->nodes[i].surf;
     }
 
     delete[] this->nodes;
 }
 
-bool BVHTree::hit(Ray ray, float startTime, float endTime, rayHit &record)
+bool BVHTree::hit(Ray ray, float startTime, float endTime, rayHit *record)
 {
-    return this->hitNodeList(ray, startTime, endTime, record, 0);
+    record->intersectionTime = endTime;
+    return this->hitNodeList(ray, startTime, record, 0);
 }
 
-void BVHTree::hit(rayBundle rays, float startTime, float endTime, hitBundle &records)
+void BVHTree::hit(rayBundle rays, float startTime, float endTime, hitBundle *records)
 {
-    this->hitNodeList(rays, startTime, endTime, records, 0);
+    for (int i = 0; i < 4; i++) records->records[i].intersectionTime = endTime;
+    this->hitNodeList(rays, startTime, records, 0);
 }
 
 void BVHTree::build(std::vector<Surface*> &surfaces, int nodeIndex)
@@ -155,7 +160,7 @@ void BVHTree::build(std::vector<Surface*> &surfaces, int nodeIndex)
     int claimedNodesIndex = this->nextFreeNode;
     this->nextFreeNode += 2;
 
-    thisNode.isInnerNode = true;
+    thisNode.isInnerNode = 1;
     thisNode.childrenOffset = claimedNodesIndex;
 
     if (this->nextFreeNode > this->allocatedSize)
@@ -167,14 +172,14 @@ void BVHTree::build(std::vector<Surface*> &surfaces, int nodeIndex)
     this->build(right, claimedNodesIndex + 1);
 }
 
-bool BVHTree::hitNodeList(Ray ray, float startTime, float endTime, rayHit &record, int nodeOfInterest)
+bool BVHTree::hitNodeList(Ray ray, float startTime, rayHit *record, int nodeOfInterest)
 {
     BVHNode &thisNode = this->nodes[nodeOfInterest];
 
     bool hitSurface = false;
-    rayHit newInfo;
+    rayHit newInfo = *record;
 
-    hitSurface = BoundingBox::hit(thisNode.boundingBox, ray, startTime, endTime, newInfo);
+    hitSurface = BoundingBox::hit(thisNode.boundingBox, ray, startTime, &newInfo);
 
     if (!hitSurface)
         return false;
@@ -182,36 +187,30 @@ bool BVHTree::hitNodeList(Ray ray, float startTime, float endTime, rayHit &recor
     hitSurface = false;
 	
     // toggle the boolean to determine whether to draw leaf bounding boxes instead of primitives
-    if (!thisNode.isInnerNode == true && false)
+#ifdef RENDER_LEAF_BBOX
+    if (!(thisNode.isInnerNode == 1))
     {
-        record = newInfo;
+        *record = newInfo;
         return true;
     }
+#endif
 
-    record.intersectionTime = endTime;
-
-    if (thisNode.isInnerNode == true)
+    if (thisNode.isInnerNode == 1)
     {
-        if (this->hitNodeList(ray, startTime, endTime, newInfo, thisNode.childrenOffset))
+        if (this->hitNodeList(ray, startTime, record, thisNode.childrenOffset))
         {
-            record = newInfo;
-            endTime = record.intersectionTime;
             hitSurface = true;
         }
 
-        if (this->hitNodeList(ray, startTime, endTime, newInfo, thisNode.childrenOffset + 1))
+        if (this->hitNodeList(ray, startTime, record, thisNode.childrenOffset + 1))
         {
-            record = newInfo;
-            endTime = record.intersectionTime;
             hitSurface = true;
         }
     }
     else
     {
-        if (thisNode.surf->hit(ray, startTime, endTime, newInfo))
+        if (thisNode.surf->hit(ray, startTime, record))
         {
-            record = newInfo;
-            endTime = record.intersectionTime;
             hitSurface = true;
         }
     }
@@ -219,42 +218,48 @@ bool BVHTree::hitNodeList(Ray ray, float startTime, float endTime, rayHit &recor
     return hitSurface;
 }
 
-void BVHTree::hitNodeList(rayBundle rays, float startTime, float endTime, hitBundle &records, int nodeOfInterest)
+void BVHTree::hitNodeList(rayBundle rays, float startTime, hitBundle *records, int nodeOfInterest)
 {
     BVHNode &thisNode = this->nodes[nodeOfInterest];
 
     bool hitSurface = false;
 
+    bool mask[4];
+    for (int i = 0; i < 4; i++) mask[i] = false;
+
+    hitBundle newInfo = *records;
+
     for (int i = 0; i < 4; i++)
     {
-        rayHit newInfo;
-
-        if (!BoundingBox::hit(thisNode.boundingBox, rays[i], startTime, endTime, newInfo))
+        if (!BoundingBox::hit(thisNode.boundingBox, rays[i], startTime, newInfo.records + i))
             continue;
 
         hitSurface = true;
-        
-        // toggle the boolean to determine whether to draw leaf bounding boxes instead of primitives
-        if (!thisNode.isInnerNode == true && false)
-        {
-            records[i] = newInfo;
-            continue;
-        }
+        mask[i] = true;
     }
+
+#ifdef RENDER_LEAF_BBOX
+    if (!(thisNode.isInnerNode == 1))
+    {
+        *records = newInfo;
+        return;
+    }
+#endif
 
     if (!hitSurface)
         return;
 
-    if (thisNode.isInnerNode == true)
+    if (thisNode.isInnerNode == 1)
     {
-        this->hitNodeList(rays, startTime, endTime, records, thisNode.childrenOffset);
-        this->hitNodeList(rays, startTime, endTime, records, thisNode.childrenOffset + 1);
+        this->hitNodeList(rays, startTime, records, thisNode.childrenOffset);
+        this->hitNodeList(rays, startTime, records, thisNode.childrenOffset + 1);
     }
     else
     {
         for (int i = 0; i < 4; i++)
         {
-            thisNode.surf->hit(rays[i], startTime, endTime, records[i]);
+            if (mask[i])
+                thisNode.surf->hit(rays[i], startTime, records->records + i);
         }
     }
 }

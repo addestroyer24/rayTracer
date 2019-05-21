@@ -5,8 +5,8 @@
 #define SQUARE_RES true
 
 #if SQUARE_RES
-#define RESX 5000
-#define RESY 5000
+#define RESX 400
+#define RESY 400
 #else
 #define RESX 1920
 #define RESY 1080
@@ -44,7 +44,7 @@
 
 Material* objMaterialtoMaterial(obj_material* mat)
 {
-	return new Material(
+	return new Material{
 		mat->name,
 		mat->texture_filename,
 		Vec3(mat->amb),
@@ -56,7 +56,7 @@ Material* objMaterialtoMaterial(obj_material* mat)
 		mat->shiny,
 		mat->glossy,
 		mat->refract_index
-	);
+	};
 }
 
 
@@ -336,7 +336,7 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 	rayHit surfaceInfo;
 	Vec3 returnColor(0);
 	
-	if (!scene.hitSurface(r, 0, 1000000, surfaceInfo))
+	if (!scene.hitSurface(r, 0, 1000000, &surfaceInfo))
 		return returnColor;
 	
 	if (surfaceInfo.materialID == "")
@@ -377,7 +377,7 @@ Vec3 traceRay(Scene& scene, Ray r, int currentDepth)
 		Ray shadowRay(surfaceInfo.intersectionPoint + surfaceInfo.surfaceNormal * 0.0001f, lightDir);
 		rayHit unneeded;
 
-		if (scene.hitSurface(shadowRay, 0, lightDistance, unneeded))
+		if (scene.hitSurface(shadowRay, 0, lightDistance, &unneeded))
 		{
 			lDotn = 0;
 			spec = 0;
@@ -415,7 +415,7 @@ void traceRayBundle(Scene& scene, rayBundle rays, Vec3Bundle &vecBundle, int cur
 
 	for (int i = 0; i < 4; i++) records[i].intersectionTime = DEFAULT_END_TIME;
 
-	scene.hitSurface(rays, 0, DEFAULT_END_TIME, records);
+	scene.hitSurface(rays, 0, DEFAULT_END_TIME, &records);
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -428,7 +428,10 @@ void traceRayBundle(Scene& scene, rayBundle rays, Vec3Bundle &vecBundle, int cur
 		}
 
 		if (records[i].materialID == "")
+		{
 			vecBundle[i] = records[i].surfaceNormal / 2 + 0.5;
+			continue;
+		}
 
 		const Material* surfaceMat = scene.getMaterial(records[i].materialID);
 
@@ -465,7 +468,7 @@ void traceRayBundle(Scene& scene, rayBundle rays, Vec3Bundle &vecBundle, int cur
 			Ray shadowRay(records[i].intersectionPoint + records[i].surfaceNormal * 0.0001f, lightDir);
 			rayHit unneeded;
 
-			if (scene.hitSurface(shadowRay, 0, lightDistance, unneeded))
+			if (scene.hitSurface(shadowRay, 0, lightDistance, &unneeded))
 			{
 				lDotn = 0;
 				spec = 0;

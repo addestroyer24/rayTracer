@@ -24,7 +24,7 @@ private:
 public:
     Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std::string materialID);
 
-    virtual bool hit(Ray ray, float startTime, float endTime, rayHit &record);
+    virtual bool hit(Ray ray, float startTime, rayHit *record);
 
     virtual Vec3 getCentroid();
     virtual BoundingBox getBoundingBox();
@@ -37,8 +37,10 @@ Sphere::Sphere(Vec3 center, Vec3 equatorNormal, Vec3 upNormal, float radius, std
     this-> upNormal = Mat::normalize(upNormal);
 }
 
-bool Sphere::hit(Ray ray, float startTime, float endTime, rayHit &record)
+bool Sphere::hit(Ray ray, float startTime, rayHit *record)
 {
+    float endTime = record->intersectionTime;
+
     Vec3 d = ray.getDirection();
     Vec3 e = ray.positionAtTime(0);
     float dDotemc = Mat::dot(d, e - this->center);
@@ -67,10 +69,10 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayHit &record)
 
     if (VOXEL_SIZE <= 0)
     {
-        record.intersectionTime = time;
-        record.intersectionPoint = ray.positionAtTime(time);
-        record.surfaceNormal = Mat::normalize(record.intersectionPoint - this->center);
-        record.materialID = this->materialName;
+        record->intersectionTime = time;
+        record->intersectionPoint = ray.positionAtTime(time);
+        record->surfaceNormal = Mat::normalize(record->intersectionPoint - this->center);
+        record->materialID = this->materialName;
         return true;
     }
 
@@ -125,7 +127,7 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayHit &record)
 
             BoundingBox bb(voxelPoint, voxelPoint + VOXEL_SIZE);
             
-            if (bb.hit(ray, startTime, endTime, voxelInfo, &exitTime))
+            if (BoundingBox::hit(bb.minMax, ray, startTime, &voxelInfo))
             {
                 hit = true;
                 centerVoxelPoint = voxelPoint;
@@ -151,9 +153,9 @@ bool Sphere::hit(Ray ray, float startTime, float endTime, rayHit &record)
     if (!hit)
         return false;
 
-    record = voxelInfo;
+    *record = voxelInfo;
     
-    record.materialID = this->materialName;
+    record->materialID = this->materialName;
     
     return true;
 }

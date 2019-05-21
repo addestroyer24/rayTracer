@@ -34,8 +34,8 @@ public:
     std::vector<Light*>& getLights();
     const Material* getMaterial(std::string name);
 
-    bool hitSurface(Ray ray, float startTime, float endTime, rayHit &record);
-    void hitSurface(rayBundle rays, float startTime, float endTime, hitBundle &records);
+    bool hitSurface(Ray ray, float startTime, float endTime, rayHit *record);
+    void hitSurface(rayBundle rays, float startTime, float endTime, hitBundle *records);
 
 };
 
@@ -87,12 +87,12 @@ const Material* Scene::getMaterial(std::string name)
     return this->materials[name];
 }
 
-bool Scene::hitSurface(Ray ray, float startTime, float endTime, rayHit &record)
+bool Scene::hitSurface(Ray ray, float startTime, float endTime, rayHit *record)
 {
     return this->sceneTree->hit(ray, startTime, endTime, record);
 }
 
-void Scene::hitSurface(rayBundle rays, float startTime, float endTime, hitBundle &records)
+void Scene::hitSurface(rayBundle rays, float startTime, float endTime, hitBundle *records)
 {
     this->sceneTree->hit(rays, startTime, endTime, records);
 }

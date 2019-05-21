@@ -27,19 +27,15 @@ public:
 		}
 	}
 
-    bool hit(Ray ray, float startTime, float endTime, rayHit &info, float *exitTime = nullptr)
-	{
-		return hit(this->minMax, ray, startTime, endTime, info, exitTime);
-	}
-	static bool hit(float minMax[6], Ray ray, float startTime, float endTime, rayHit &info, float *exitTime = nullptr);
+	static bool hit(float minMax[6], Ray ray, float startTime, rayHit *record);
 };
 
-bool BoundingBox::hit(float minMax[6], Ray ray, float startTime, float endTime, rayHit &record, float *exitTime)
+bool BoundingBox::hit(float minMax[6], Ray ray, float startTime, rayHit *record)
 {
     //we want to find the farthest entrace and closest exit to the box
 	//if the exit is closer than the entrance, there is no hit
 	float entrance = startTime;
-	float exit = endTime;
+	float exit = record->intersectionTime;
 	Vec3 normal = Vec3(0);
 	Vec3 dir = ray.getDirection();
 	Vec3 org = ray.positionAtTime(0);
@@ -63,32 +59,24 @@ bool BoundingBox::hit(float minMax[6], Ray ray, float startTime, float endTime, 
 		bool foundNewExit = farthestHit < exit;
 		exit = foundNewExit ? farthestHit : exit;
 		
-		bool tooClose = farthestHit < entrance;
-		bool tooFar = closestHit > exit;
-		
-		if(tooClose || tooFar)
+		if (exit < entrance)
 			return false;
 		
+#ifdef RENDER_LEAF_BBOX
 		if(foundNewEntrance)
 		{
             normal = Vec3(0);
-			normal[i] = ray.getDirection()[i] < 0 ? 1 : -1;
+			normal[i] = dir[i] < 0 ? 1.0f : -1.0f;
 		}
-
-        // if (foundNewExit && exitNormal != nullptr)
-        // {
-        //     *exitNormal = Vec3(0);
-        //     (*exitNormal)[i] = ray.getDirection()[i] < 0 ? -1 : 1;
-        // }
+#endif
 	}
 
-    record.materialID = "";
-    record.surfaceNormal = normal;
-    record.intersectionTime = entrance;
-    record.intersectionPoint = ray.positionAtTime(entrance);
-
-    if (exitTime != nullptr)
-        *exitTime = exit;
+#ifdef RENDER_LEAF_BBOX
+    record->materialID = "";
+    record->surfaceNormal = normal;
+    record->intersectionTime = entrance;
+    record->intersectionPoint = ray.positionAtTime(entrance);
+#endif
 
     return true;
 }
